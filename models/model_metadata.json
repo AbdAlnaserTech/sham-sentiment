@@ -1,0 +1,43 @@
+{
+  "model_name": "logreg",
+  "model_label": "Logistic Regression",
+  "cv_f1_macro": 0.8603374920297251,
+  "validation_macro_f1": 0.6728115747723592,
+  "selection_note": "100% synthetic test F1 is not used for model selection",
+  "best_params": {
+    "clf__C": 2.0
+  },
+  "overall": {
+    "negative": {
+      "precision": 0.5333333333333333,
+      "recall": 0.7272727272727273,
+      "f1-score": 0.6153846153846154,
+      "support": 11.0
+    },
+    "neutral": {
+      "precision": 0.8333333333333334,
+      "recall": 0.45454545454545453,
+      "f1-score": 0.5882352941176471,
+      "support": 11.0
+    },
+    "positive": {
+      "precision": 0.7857142857142857,
+      "recall": 0.8461538461538461,
+      "f1-score": 0.8148148148148148,
+      "support": 13.0
+    },
+    "accuracy": 0.6857142857142857,
+    "macro avg": {
+      "precision": 0.7174603174603175,
+      "recall": 0.675990675990676,
+      "f1-score": 0.6728115747723592,
+      "support": 35.0
+    },
+    "weighted avg": {
+      "precision": 0.721360544217687,
+      "recall": 0.6857142857142857,
+      "f1-score": 0.6809260456319279,
+      "support": 35.0
+    }
+  }
+}

@@ -1,0 +1,61 @@
+data:
+  synthetic_counts:
+    en: 1700
+    ar_fusha: 1700
+    ar_shami: 1600
+  default_dataset: data/sentiment_dataset_multilingual.csv
+  validation_path: data/real/validation_comments.csv
+  sample_path: data/sample_comments.csv
+  astd_path: data/real/astd_processed.csv
+
+model:
+  vectorizer:
+    ngram_range: [1, 3]
+    max_features: 20000
+    sublinear_tf: true
+  candidates:
+    - logreg
+    - linear_svm
+  grid_C: [0.5, 1.0, 2.0, 4.0]
+  calibration:
+    method: sigmoid
+    cv: 5
+  labels:
+    - negative
+    - neutral
+    - positive
+
+training:
+  test_size: 0.2
+  random_state: 42
+  cv_folds: 5
+  scoring: f1_macro
+
+inference:
+  confidence_threshold: 55.0
+  max_text_length: 5000
+  bert_neutral_threshold: 0.58
+  use_finetuned: false
+  default_model: bert
+  max_batch_size: 2000
+
+platform:
+  require_login: true
+  negative_alert_threshold: 0.45
+  api_key: ""   # optional — set SENTIMENT_API_KEY env for API auth
+
+ui:
+  default_language: auto
+  rtl_languages:
+    - ar_fusha
+    - ar_shami
+  university_name_ar: "جامعة الشام"
+  university_name_en: "Sham University"
+  department_ar: "قسم علوم الحاسوب — مشروع تخرج"
+  logo_path: assets/logo.png
+  author_name_ar: "عبد الناصر حسون"
+  author_name_en: "Abd Al-Nasser Hassoun"
+  author_label: "إعداد وتطوير"
+
+logging:
+  level: INFO

@@ -1,0 +1,36 @@
+﻿text,sentiment,language
+الطعم كان لذيذ لكن الخدمة بطيئة,neutral,ar_fusha
+أسوأ تجربة توصيل مررت بها,negative,ar_fusha
+الموظفون محترمون والمنتج ممتاز,positive,ar_fusha
+السعر مرتفع مقارنة بالجودة,negative,ar_fusha
+لا بأس بالمنتج,neutral,ar_fusha
+أنصح به بشدة,positive,ar_fusha
+تأخر الطلب ساعتين بدون مبرر,negative,ar_fusha
+التطبيق سهل وواضح,positive,ar_fusha
+الخدمة عادية,neutral,ar_fusha
+جودة ممتازة وسرعة في الرد,positive,ar_fusha
+عنجد الاكل طيب بس التأخير مزعج,neutral,ar_shami
+الخدمة كتير منيح,positive,ar_shami
+مو راضي أبداً عن الطلب,negative,ar_shami
+تمام التطبيق بيشتغل منيح,positive,ar_shami
+عادي مش كتير,neutral,ar_shami
+تأخرت الطلبية ٣ ساعات,negative,ar_shami
+كتير راضي عن التجربة,positive,ar_shami
+السعر غالي بس الجودة مقبولة,neutral,ar_shami
+ما بنصح فيه,negative,ar_shami
+هلق جربتو وطلع كتير حلو,positive,ar_shami
+I love the fast delivery and friendly staff,positive,en
+Worst customer service ever,negative,en
+"It is fine, nothing special",neutral,en
+Great app but crashes sometimes,neutral,en
+Absolutely terrible quality,negative,en
+Exceeded my expectations,positive,en
+"Not bad, not great",neutral,en
+Would not recommend,negative,en
+Perfect experience from start to finish,positive,en
+The product broke after one day,negative,en
+Average food average service,neutral,en
+Amazing value for money,positive,en
+Support never replied to my ticket,negative,en
+Decent update but still has bugs,neutral,en
+Best purchase this year,positive,en

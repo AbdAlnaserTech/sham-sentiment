@@ -1,0 +1,14 @@
+{
+  "base_model": "cardiffnlp/twitter-xlm-roberta-base-sentiment",
+  "train_samples": 150,
+  "val_samples": 513,
+  "epochs": 1,
+  "class_weights": [
+    1.0,
+    1.0,
+    1.0
+  ],
+  "eval_accuracy": 0.621832358674464,
+  "eval_f1_macro": 0.6078881970527924,
+  "model_dir": "C:\\Users\\nasser hassoun\\OneDrive\\المستندات\\Desktop\\التخرج\\sentiment_project\\models\\bert_finetuned"
+}

@@ -1,0 +1,19 @@
+,language,precision,recall,f1-score,support
+negative,ar_fusha,1.0,1.0,1.0,113.0
+neutral,ar_fusha,1.0,1.0,1.0,113.0
+positive,ar_fusha,1.0,1.0,1.0,113.0
+accuracy,ar_fusha,1.0,1.0,1.0,1.0
+macro avg,ar_fusha,1.0,1.0,1.0,339.0
+weighted avg,ar_fusha,1.0,1.0,1.0,339.0
+negative,ar_shami,1.0,1.0,1.0,107.0
+neutral,ar_shami,1.0,1.0,1.0,107.0
+positive,ar_shami,1.0,1.0,1.0,107.0
+accuracy,ar_shami,1.0,1.0,1.0,1.0
+macro avg,ar_shami,1.0,1.0,1.0,321.0
+weighted avg,ar_shami,1.0,1.0,1.0,321.0
+negative,en,1.0,1.0,1.0,113.0
+neutral,en,1.0,1.0,1.0,113.0
+positive,en,1.0,1.0,1.0,114.0
+accuracy,en,1.0,1.0,1.0,1.0
+macro avg,en,1.0,1.0,1.0,340.0
+weighted avg,en,1.0,1.0,1.0,340.0

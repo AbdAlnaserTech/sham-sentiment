@@ -1,0 +1,52 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# Jupyter
+.ipynb_checkpoints/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project artifacts (keep metadata, optional ignore large model)
+# models/sentiment_model.pkl
+
+# Streamlit
+.streamlit/secrets.toml
+
+# Logs
+*.log
+
+# Test / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Data outputs (optional generated files)
+data/processed/
+data/fetched_*.csv
+
+# BERT fine-tuned weights (too large for GitHub; use_finetuned: false by default)
+models/bert_finetuned/
+*.safetensors
+
+# BERT training checkpoints
+models/bert_finetuned/checkpoint-*/

@@ -1,0 +1,78 @@
+{
+  "selection_criterion": "validation_macro_f1",
+  "validation_samples": 35,
+  "train_samples": 6303,
+  "winner": {
+    "algorithm": "logreg",
+    "label": "Logistic Regression",
+    "validation_macro_f1": 0.6728115747723592,
+    "validation_accuracy": 0.6857142857142857,
+    "cv_f1_macro_synthetic": 0.8603374920297251,
+    "best_params": {
+      "clf__C": 2.0
+    },
+    "why_selected": "Highest macro F1 (0.6728) on real validation set (35 samples) among 6 algorithms."
+  },
+  "ranking": [
+    {
+      "algorithm": "logreg",
+      "label": "Logistic Regression",
+      "cv_f1_macro_synthetic": 0.8603374920297251,
+      "validation_macro_f1": 0.6728115747723592,
+      "validation_accuracy": 0.6857142857142857,
+      "best_params": {
+        "clf__C": 2.0
+      }
+    },
+    {
+      "algorithm": "linear_svm",
+      "label": "Linear SVM",
+      "cv_f1_macro_synthetic": 0.8596663825709812,
+      "validation_macro_f1": 0.6728115747723592,
+      "validation_accuracy": 0.6857142857142857,
+      "best_params": {
+        "clf__C": 0.5
+      }
+    },
+    {
+      "algorithm": "sgd_log",
+      "label": "SGD (log loss)",
+      "cv_f1_macro_synthetic": 0.8596489307503365,
+      "validation_macro_f1": 0.6728115747723592,
+      "validation_accuracy": 0.6857142857142857,
+      "best_params": {
+        "clf__alpha": 0.0001
+      }
+    },
+    {
+      "algorithm": "passive_aggressive",
+      "label": "Passive Aggressive",
+      "cv_f1_macro_synthetic": 0.8533403632558585,
+      "validation_macro_f1": 0.6137566137566138,
+      "validation_accuracy": 0.6285714285714286,
+      "best_params": {
+        "clf__C": 0.5
+      }
+    },
+    {
+      "algorithm": "complement_nb",
+      "label": "Complement Naive Bayes",
+      "cv_f1_macro_synthetic": 0.8646746655246844,
+      "validation_macro_f1": 0.576405529953917,
+      "validation_accuracy": 0.6,
+      "best_params": {
+        "clf__alpha": 0.5
+      }
+    },
+    {
+      "algorithm": "multinomial_nb",
+      "label": "Multinomial Naive Bayes",
+      "cv_f1_macro_synthetic": 0.8616937673589987,
+      "validation_macro_f1": 0.5514041514041513,
+      "validation_accuracy": 0.5714285714285714,
+      "best_params": {
+        "clf__alpha": 0.5
+      }
+    }
+  ]
+}

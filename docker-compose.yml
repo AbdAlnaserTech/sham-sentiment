@@ -1,0 +1,18 @@
+services:
+  ui:
+    build: .
+    ports:
+      - "8501:8501"
+    command: streamlit run app/main.py --server.port=8501 --server.address=0.0.0.0
+    volumes:
+      - ./models:/app/models
+      - ./data:/app/data
+
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    command: uvicorn api.server:app --app-dir src --host 0.0.0.0 --port 8000
+    volumes:
+      - ./models:/app/models
+      - ./data:/app/data

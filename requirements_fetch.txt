@@ -1,0 +1,4 @@
+# Optional: fetch real comments from the web
+youtube-comment-downloader>=0.1.76
+google-play-scraper>=1.2.7
+requests>=2.31.0
