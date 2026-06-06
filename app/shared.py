@@ -8,14 +8,14 @@ from components.app_header import render_author_badge
 from config import load_config
 from language import detect_language
 from models.registry import available_models, load_predictor
-from paths import ProjectPaths, ensure_dirs
+from paths import ProjectPaths, ensure_dirs, get_project_root
 from cloud_setup import bootstrap_cloud, cloud_max_batch_size, is_cloud_runtime
 
 ModelKind = str
 
 
 def init_app() -> tuple[ProjectPaths, Any]:
-    paths = ProjectPaths.from_project_root(bootstrap.PROJECT_ROOT)
+    paths = ProjectPaths.from_project_root(get_project_root())
     ensure_dirs(paths.data_dir, paths.models_dir, paths.reports_dir)
     bootstrap_cloud(paths.db_path)
     config = load_config()
@@ -35,7 +35,7 @@ def init_app() -> tuple[ProjectPaths, Any]:
 
 @st.cache_resource(show_spinner="جاري تحميل النموذj...")
 def get_predictor(model_kind: str = "tfidf"):
-    return load_predictor(model_kind, root_dir=bootstrap.PROJECT_ROOT)
+    return load_predictor(model_kind, root_dir=get_project_root())
 
 
 def append_history(result: Dict[str, Any]) -> None:
@@ -55,7 +55,7 @@ def render_sidebar_settings(ui_config: Dict[str, Any] | None = None) -> tuple[bo
         render_author_badge(ui_config, compact=True)
         st.markdown("### الإعدادات")
 
-        models = available_models(bootstrap.PROJECT_ROOT)
+        models = available_models(get_project_root())
         options = [key for key, info in models.items() if info.get("available", True)]
         labels = {key: models[key]["label"] for key in options}
 

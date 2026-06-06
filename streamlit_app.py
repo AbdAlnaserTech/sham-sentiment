@@ -15,7 +15,7 @@ ROOT = os.path.dirname(os.path.abspath(__file__))
 APP_DIR = os.path.join(ROOT, "app")
 SRC_DIR = os.path.join(ROOT, "src")
 
-for path in (APP_DIR, SRC_DIR):
+for path in (SRC_DIR, APP_DIR):
     if path not in sys.path:
         sys.path.insert(0, path)
 

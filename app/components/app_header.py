@@ -4,7 +4,7 @@ from typing import Any, Dict, Optional
 
 import streamlit as st
 
-import bootstrap
+from paths import get_project_root
 
 LOGO_CANDIDATES = (
     "assets/logo.png",
@@ -27,7 +27,7 @@ def _resolve_logo_path(ui_config: Dict[str, Any]) -> Optional[str]:
         candidates.append(configured)
     candidates.extend(LOGO_CANDIDATES)
     for path in candidates:
-        full_path = path if os.path.isabs(path) else os.path.join(bootstrap.PROJECT_ROOT, path)
+        full_path = path if os.path.isabs(path) else os.path.join(get_project_root(), path)
         if os.path.exists(full_path):
             return full_path
     return None

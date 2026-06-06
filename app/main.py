@@ -25,7 +25,7 @@ from components.sentiment_display import render_sentiment_result
 from components.ui_styles import apply_app_styles
 from components.wordcloud import render_wordcloud
 from language import is_arabic
-from paths import ProjectPaths
+from paths import ProjectPaths, get_project_root
 from shared import (
     append_history,
     get_predictor,
@@ -254,7 +254,7 @@ with tab_live:
 
 
 with st.expander("📊 أداء النماذج / Model Metrics"):
-    paths = ProjectPaths.from_project_root(bootstrap.PROJECT_ROOT)
+    paths = ProjectPaths.from_project_root(get_project_root())
     demo_bert_path = os.path.join(paths.reports_dir, "validation_demo_bert.json")
     demo_tfidf_path = os.path.join(paths.reports_dir, "validation_demo_tfidf.json")
     algo_path = os.path.join(paths.reports_dir, "algorithm_comparison.json")
