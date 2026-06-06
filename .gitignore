@@ -43,6 +43,7 @@ htmlcov/
 # Data outputs (optional generated files)
 data/processed/
 data/fetched_*.csv
+data/sentiment_platform.db
 
 # BERT fine-tuned weights (too large for GitHub; use_finetuned: false by default)
 models/bert_finetuned/
