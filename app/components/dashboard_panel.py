@@ -49,7 +49,7 @@ def render_dashboard() -> None:
                     "negative": "#dc2626",
                     "neutral": "#d97706",
                 },
-                title="توزيع المشاعr الإجمالي",
+                title="توزيع المشاعر الإجمالي",
             )
             fig.update_layout(margin=dict(t=40, b=20, l=20, r=20))
             st.plotly_chart(fig, use_container_width=True)

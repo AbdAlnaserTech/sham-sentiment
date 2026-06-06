@@ -1,4 +1,4 @@
-# Multilingual Sentiment Analysis — تحليل مشاعr التعليقات
+# Multilingual Sentiment Analysis — تحليل مشاعر التعليقات
 
 **المطور:** عبد الناصر حسون · **جامعة الشام**
 

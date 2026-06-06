@@ -16,6 +16,7 @@ def ensure_default_users() -> None:
     defaults = [
         ("admin", "Admin@2026", "admin", "عبد الناصر حسون", "Abd Al-Nasser Hassoun"),
         ("analyst", "Analyst@2026", "analyst", "محلل", "Analyst"),
+        ("viewer", "Viewer@2026", "viewer", "عارض", "Viewer"),
     ]
     with get_connection() as conn:
         for username, password, role, name_ar, name_en in defaults:

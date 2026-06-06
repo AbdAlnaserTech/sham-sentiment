@@ -58,12 +58,13 @@ SENTIMENT_MAX_BATCH = "100"
 |-------|----------|-------------|
 | مدير | admin | Admin@2026 |
 | محلل | analyst | Analyst@2026 |
+| عرض | viewer | Viewer@2026 |
 
 ## ملاحظات مهمة
 
 | الموضوع | التفاصيل |
 |---------|----------|
-| الذاكرة | الخطة المجانية ~1 GB — يُستخدم نموذj BERT واحد (XLM-RoBERTa) |
+| الذاكرة | الخطة المجانية ~1 GB — يُستخدم نموذج BERT واحد (XLM-RoBERTa) |
 | قاعدة البيانات | SQLite مؤقتة — تُعاد عند إعادة النشر |
 | TF-IDF | يحتاج `models/sentiment_model.pkl` — شغّل `python train.py` محلياً ثم ارفعه |
 | الدفعات | حد 100 تعليق على السحابة (100 على السحابة vs 2000 محلياً) |
@@ -72,7 +73,7 @@ SENTIMENT_MAX_BATCH = "100"
 
 1. **Logs** في Streamlit Cloud → ابحث عن `MemoryError` أو `OutOfMemory`
 2. جرّب في Secrets: `SENTIMENT_CLOUD_LIGHT = "1"`
-3. استخدم **TF-IDF** بعد تدريب النموذj محلياً ورفع `sentiment_model.pkl`
+3. استخدم **TF-IDF** بعد تدريب النموذج محلياً ورفع `sentiment_model.pkl`
 
 ## رابطك بعد النشر
 

@@ -41,7 +41,7 @@ def render_login_form() -> bool:
         return True
 
     st.markdown("### تسجيل الدخول")
-    st.caption("منصة تحليل المشاعr — جامعة الشام")
+    st.caption("منصة تحليل المشاعر — جامعة الشام")
 
     with st.form("login_form"):
         username = st.text_input("اسم المستخدم")
@@ -63,6 +63,7 @@ def render_login_form() -> bool:
             |-------|----------|-------------|
             | مدير | `admin` | `Admin@2026` |
             | محلل | `analyst` | `Analyst@2026` |
+            | عرض | `viewer` | `Viewer@2026` |
             """
         )
     return False

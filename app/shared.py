@@ -33,7 +33,7 @@ def init_app() -> tuple[ProjectPaths, Any]:
     return paths, config
 
 
-@st.cache_resource(show_spinner="جاري تحميل النموذj...")
+@st.cache_resource(show_spinner="جاري تحميل النموذج...")
 def get_predictor(model_kind: str = "tfidf"):
     return load_predictor(model_kind, root_dir=get_project_root())
 
@@ -63,7 +63,7 @@ def render_sidebar_settings(ui_config: Dict[str, Any] | None = None) -> tuple[bo
         if current not in options:
             current = options[0]
 
-        st.markdown("**النموذj**")
+        st.markdown("**النموذج**")
         model_kind = st.selectbox(
             "Model",
             options=options,

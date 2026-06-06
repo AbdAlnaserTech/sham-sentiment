@@ -1,4 +1,4 @@
-# System Architecture — منصة تحليل المشاعr
+# System Architecture — منصة تحليل المشاعر
 
 ## Overview
 
@@ -84,3 +84,4 @@ Multilingual sentiment analysis platform for graduation project and commercial e
 |------|------|----------|
 | Admin | admin | Admin@2026 |
 | Analyst | analyst | Analyst@2026 |
+| Viewer | viewer | Viewer@2026 |

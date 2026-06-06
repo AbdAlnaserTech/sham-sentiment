@@ -4,6 +4,7 @@ import json
 import os
 
 import streamlit as st
+from components.about_panel import render_about_panel
 from components.analytics_panel import render_batch_analytics
 from components.app_header import render_app_footer, render_app_header, render_empty_result_panel
 from components.auth_panel import can_analyze, current_user, render_login_form, render_user_menu
@@ -56,8 +57,12 @@ render_user_menu()
 
 if not can_analyze():
     render_app_header(config.ui)
-    st.warning("حسابك للعرض فقط (viewer).")
-    render_dashboard()
+    st.info("حساب **viewer** — لوحة التحكم و«حول المشروع» فقط (بدون تحليل).")
+    tab_view_dash, tab_view_about = st.tabs(["لوحة التحكم", "حول المشروع"])
+    with tab_view_dash:
+        render_dashboard()
+    with tab_view_about:
+        render_about_panel(config)
     render_app_footer(config.ui)
     st.stop()
 
@@ -102,12 +107,16 @@ def _execute_batch_analysis(comments: list[str]) -> None:
     except FileNotFoundError as exc:
         st.error(str(exc))
 
-tab_dashboard, tab_single, tab_batch, tab_live = st.tabs([
+tab_dashboard, tab_single, tab_batch, tab_live, tab_about = st.tabs([
     "لوحة التحكم",
     "تعليق واحد",
     "مجموعة تعليقات",
     "جلب من الإنترنت",
+    "حول المشروع",
 ])
+
+with tab_about:
+    render_about_panel(config)
 
 with tab_dashboard:
     render_dashboard()

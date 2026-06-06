@@ -42,7 +42,9 @@ inference:
 platform:
   require_login: true
   negative_alert_threshold: 0.45
-  api_key: ""   # optional — set SENTIMENT_API_KEY env for API auth
+  api_key: ""
+  github_url: "https://github.com/AbdAlnaserTech/sham-sentiment"
+  app_url: "https://sham-sentiment.streamlit.app"
 
 ui:
   default_language: auto

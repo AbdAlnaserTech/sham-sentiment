@@ -55,6 +55,30 @@ def test_alerts_negative_spike():
     assert any(a["alert_type"] == "negative_spike" for a in alerts)
 
 
+def test_viewer_cannot_analyze_role():
+    from db.auth import user_can_analyze, user_can_admin
+
+    assert not user_can_analyze("viewer")
+    assert not user_can_admin("viewer")
+    assert user_can_analyze("analyst")
+    assert user_can_admin("admin")
+
+
+def test_viewer_user_created():
+    with tempfile.TemporaryDirectory() as tmp:
+        db_path = os.path.join(tmp, "test.db")
+        os.environ["SENTIMENT_DB_PATH"] = db_path
+        try:
+            init_database(db_path)
+            ensure_default_users()
+            user = authenticate("viewer", "Viewer@2026")
+            assert user is not None
+            assert user["role"] == "viewer"
+        finally:
+            gc.collect()
+            os.environ.pop("SENTIMENT_DB_PATH", None)
+
+
 def test_keywords_extraction():
     df = pd.DataFrame([
         {"text": "excellent fast delivery", "sentiment": "positive", "language": "en"},
