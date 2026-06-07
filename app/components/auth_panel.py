@@ -34,6 +34,13 @@ def can_admin() -> bool:
     return bool(user and user_can_admin(user["role"]))
 
 
+ROLE_LABELS_AR = {
+    "admin": "مدير النظام",
+    "analyst": "محلل",
+    "viewer": "عرض فقط",
+}
+
+
 def render_login_form() -> bool:
     """Return True when user is authenticated."""
     init_auth_state()
@@ -66,6 +73,23 @@ def render_login_form() -> bool:
             | عرض | `viewer` | `Viewer@2026` |
             """
         )
+
+    try:
+        from config import load_config
+
+        platform = load_config().platform
+        github = platform.get("github_url", "")
+        app_url = platform.get("app_url", "")
+        if github or app_url:
+            links = []
+            if github:
+                links.append(f"[GitHub]({github})")
+            if app_url:
+                links.append(f"[التطبيق]({app_url})")
+            st.caption(" · ".join(links))
+    except Exception:
+        pass
+
     return False
 
 
@@ -75,7 +99,8 @@ def render_user_menu() -> None:
         return
     st.sidebar.markdown("---")
     st.sidebar.markdown(f"**{user.get('full_name_ar', user['username'])}**")
-    st.sidebar.caption(f"الدور: {user['role']}")
+    role_ar = ROLE_LABELS_AR.get(user["role"], user["role"])
+    st.sidebar.caption(f"الدور: {role_ar}")
     if st.sidebar.button("تسجيل الخروج", use_container_width=True):
         st.session_state["auth_user"] = None
         st.rerun()

@@ -82,3 +82,5 @@ def render_about_panel(config: Any) -> None:
         "**BERT** — F1 ≈ 76% على عيّنة العرض | **TF-IDF** — F1 ≈ 67% + LIME\n\n"
         "الاختبار الكامل (~513 عينة): BERT F1 ≈ 63%"
     )
+
+    st.caption("دليل الدفاع الكامل: `docs/DEFENSE_GUIDE_AR.md` في المستودع.")

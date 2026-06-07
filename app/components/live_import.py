@@ -108,6 +108,11 @@ def render_live_import_panel(
             texts = [item.text for item in comments[:max_batch_size]]
             if len(comments) > max_batch_size:
                 st.warning(f"تم اقتصار التحليل على أول {max_batch_size} تعليق.")
+            source_name = st.session_state.get("fetched_source", source)
+            st.session_state["batch_source"] = f"live:{source_name}"
+            st.session_state["batch_title"] = (
+                f"Live fetch — {SOURCE_LABELS.get(source_name, source_name)} ({len(texts)} comments)"
+            )
             on_analyze(texts)
 
         st.download_button(

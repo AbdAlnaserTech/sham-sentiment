@@ -4,6 +4,7 @@ from typing import Any, Dict, List
 
 import streamlit as st
 
+from components.demo_guide import render_defense_sidebar
 from components.app_header import render_author_badge
 from config import load_config
 from language import detect_language
@@ -93,6 +94,9 @@ def render_sidebar_settings(ui_config: Dict[str, Any] | None = None) -> tuple[bo
         st.divider()
         st.markdown("**خيارات متقدمة**")
         compare_models = st.toggle("مقارنة TF-IDF vs BERT", value=False)
+
+        st.divider()
+        render_defense_sidebar()
 
         st.divider()
         if is_cloud_runtime():

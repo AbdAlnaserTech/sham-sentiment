@@ -15,6 +15,13 @@ def render_dashboard() -> None:
     totals = stats["totals"]
 
     st.markdown("### لوحة التحكم")
+
+    if int(totals.get("batches") or 0) == 0:
+        st.info(
+            "لا توجد تحليلات محفوظة بعد. "
+            "جرّب «تعليق واحد» أو «مجموعة تعليقات» — أو زر **تحميل أمثلة الدفعة** من الشريط الجانبي."
+        )
+
     c1, c2, c3, c4, c5 = st.columns(5)
     c1.metric("الدفعات", int(totals.get("batches") or 0))
     c2.metric("التعليقات", int(totals.get("items") or 0))

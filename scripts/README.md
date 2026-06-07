@@ -10,7 +10,7 @@ python compare_models.py
 
 | الملف | الوظيفة |
 |-------|---------|
-| `train.py` | تدريب نموذj TF-IDF |
+| `train.py` | تدريب نموذج TF-IDF |
 | `compare_algorithms.py` | مقارنة 6 خوارزmيات + حفظ الأفضل |
 | `compare_models.py` | مقارنة TF-IDF vs BERT |
 | `evaluate.py` | تقييم على CSV موسوم |
