@@ -7,6 +7,47 @@ import streamlit as st
 
 from language import SENTIMENT_LABEL_AR, detect_language
 
+BATCH_COLUMNS = [
+    "text",
+    "language",
+    "sentiment",
+    "sentiment_ar",
+    "confidence",
+    "is_reliable",
+    "error",
+]
+
+
+def normalize_batch_result(item: Dict[str, Any], *, fallback_text: str = "") -> Dict[str, Any]:
+    text = str(item.get("text", fallback_text) or fallback_text)
+    language = item.get("language")
+    if not language:
+        language = detect_language(text) if text.strip() else "en"
+    sentiment = item.get("sentiment") or ("neutral" if item.get("error") else "")
+    return {
+        "text": text,
+        "language": language,
+        "cleaned_text": item.get("cleaned_text", text),
+        "sentiment": sentiment,
+        "confidence": float(item.get("confidence", 0.0) or 0.0),
+        "distribution": item.get("distribution", {}),
+        "is_reliable": bool(item.get("is_reliable", False)),
+        "error": item.get("error", ""),
+        "model": item.get("model", ""),
+    }
+
+
+def normalize_batch_results(
+    results: List[Dict[str, Any]],
+    comments: List[str] | None = None,
+) -> List[Dict[str, Any]]:
+    comments = comments or []
+    normalized: List[Dict[str, Any]] = []
+    for index, item in enumerate(results):
+        fallback = comments[index] if index < len(comments) else ""
+        normalized.append(normalize_batch_result(item, fallback_text=fallback))
+    return normalized
+
 
 def parse_comments_text(raw: str) -> List[str]:
     lines = [line.strip() for line in raw.splitlines()]
@@ -14,16 +55,20 @@ def parse_comments_text(raw: str) -> List[str]:
 
 
 def results_to_dataframe(results: List[Dict[str, Any]]) -> pd.DataFrame:
+    if not results:
+        return pd.DataFrame(columns=BATCH_COLUMNS)
+
     rows = []
     for item in results:
+        normalized = normalize_batch_result(item)
         rows.append({
-            "text": item.get("text", ""),
-            "language": item.get("language", ""),
-            "sentiment": item.get("sentiment", ""),
-            "sentiment_ar": SENTIMENT_LABEL_AR.get(item.get("sentiment", ""), ""),
-            "confidence": item.get("confidence", 0.0),
-            "is_reliable": item.get("is_reliable", False),
-            "error": item.get("error", ""),
+            "text": normalized["text"],
+            "language": normalized["language"],
+            "sentiment": normalized["sentiment"],
+            "sentiment_ar": SENTIMENT_LABEL_AR.get(normalized["sentiment"], normalized["sentiment"]),
+            "confidence": normalized["confidence"],
+            "is_reliable": normalized["is_reliable"],
+            "error": normalized["error"],
         })
     return pd.DataFrame(rows)
 
@@ -69,20 +114,19 @@ def render_batch_summary(df: pd.DataFrame) -> None:
 
 def append_batch_to_history(results: List[Dict[str, Any]]) -> None:
     now = datetime.now(timezone.utc).isoformat()
-    for item in results:
+    for item in normalize_batch_results(results):
         if item.get("error"):
             continue
         sentiment = item.get("sentiment")
-        text = item.get("text", "")
         if not sentiment:
             continue
         st.session_state["history"].append({
             "timestamp": now,
-            "language": item.get("language") or detect_language(str(text)),
+            "language": item["language"],
             "sentiment": sentiment,
             "confidence": item.get("confidence", 0.0),
             "is_reliable": item.get("is_reliable", True),
-            "text": text,
+            "text": item.get("text", ""),
         })
 
 
@@ -101,15 +145,25 @@ def run_batch_sentiment_analysis(
     lang_choice: str,
 ) -> tuple[pd.DataFrame, List[Dict[str, Any]]]:
     languages = None if auto_lang else [lang_choice] * len(comments)
-    results = predictor.predict_batch(
+    raw_results = predictor.predict_batch(
         comments,
         languages=languages,
         auto_language=auto_lang,
     )
+    results = normalize_batch_results(raw_results, comments)
     return results_to_dataframe(results), results
 
 
 def render_batch_results_table(out_df: pd.DataFrame) -> None:
+    if out_df.empty:
+        st.caption("لا توجد نتائج للعرض.")
+        return
+
+    for column in BATCH_COLUMNS:
+        if column not in out_df.columns:
+            out_df = out_df.copy()
+            out_df[column] = "" if column != "confidence" else 0.0
+
     display_df = out_df[[
         "text", "sentiment_ar", "sentiment", "language", "confidence", "is_reliable", "error"
     ]].rename(columns={
