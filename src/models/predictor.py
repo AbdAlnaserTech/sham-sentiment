@@ -144,6 +144,24 @@ class SentimentPredictor:
                 "confidence_threshold": threshold,
             }
 
+        for index, item in enumerate(results):
+            if item.get("sentiment") and item.get("language") is not None:
+                continue
+            if item.get("error"):
+                continue
+            raw = str(texts[index] or "").strip()
+            lang = languages[index] if index < len(languages) and languages[index] else detect_language(raw) if raw else "en"
+            results[index] = {
+                "text": texts[index],
+                "language": lang,
+                "cleaned_text": "",
+                "sentiment": "neutral",
+                "confidence": 0.0,
+                "distribution": {},
+                "is_reliable": False,
+                "error": "Analysis failed",
+            }
+
         return results
 
     def predict_dataframe(

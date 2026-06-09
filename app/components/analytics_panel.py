@@ -77,13 +77,17 @@ def render_batch_analytics(
             use_container_width=True,
         )
     with c2:
-        st.download_button(
-            "PDF",
-            data=export_pdf_bytes(out_df, title="Sentiment Analysis Report", meta=meta),
-            file_name="sentiment_report.pdf",
-            mime="application/pdf",
-            use_container_width=True,
-        )
+        try:
+            pdf_bytes = export_pdf_bytes(out_df, title="Sentiment Analysis Report", meta=meta)
+            st.download_button(
+                "PDF",
+                data=pdf_bytes,
+                file_name="sentiment_report.pdf",
+                mime="application/pdf",
+                use_container_width=True,
+            )
+        except Exception as exc:
+            st.caption(f"تعذّر إنشاء PDF: {exc}")
     with c3:
         if st.button("حفظ في قاعدة البيانات", use_container_width=True):
             batch_id = save_batch_analysis(

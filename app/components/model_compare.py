@@ -10,7 +10,7 @@ def render_model_comparison_table(
     tfidf_result: Optional[Dict[str, Any]],
     bert_result: Optional[Dict[str, Any]],
 ) -> None:
-    st.subheader("⚖️ مقارنة النماذج / Model Comparison")
+    st.subheader(" مقارنة النماذج / Model Comparison")
 
     if not tfidf_result and not bert_result:
         st.info("فعّل «مقارنة النماذج» من الشريط الجانبي ثم حلّل تعليقاً.")
@@ -33,7 +33,7 @@ def render_model_comparison_table(
 
     if tfidf_result and bert_result:
         if tfidf_result["sentiment"] == bert_result["sentiment"]:
-            st.success("النموذجان متفقان على نفس التصنيف ✅")
+            st.success("النموذجان متفقان على نفس التصنيف ")
         else:
             st.warning(
                 f"اختلاف: TF-IDF → {SENTIMENT_LABEL_AR.get(tfidf_result['sentiment'], tfidf_result['sentiment'])} | "

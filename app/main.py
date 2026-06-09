@@ -106,6 +106,8 @@ def _execute_batch_analysis(comments: list[str]) -> None:
         )
     except FileNotFoundError as exc:
         st.error(str(exc))
+    except Exception as exc:
+        st.error(f"حدث خطأ أثناء تحليل الدفعة: {exc}")
 
 tab_dashboard, tab_single, tab_batch, tab_live, tab_about = st.tabs([
     "لوحة التحكم",
@@ -193,7 +195,7 @@ with tab_single:
             render_lime_explanation(
                 get_predictor("tfidf"),
                 last_comment,
-                language=last["language"],
+                language=last.get("language"),
             )
 
 with tab_batch:

@@ -90,7 +90,7 @@ def save_batch_analysis(
                 (
                     batch_id,
                     str(r.get("text", "")),
-                    r.get("language"),
+                    r.get("language") or "",
                     r.get("sentiment", "neutral"),
                     float(r.get("confidence", 0)),
                     1 if r.get("is_reliable", True) else 0,

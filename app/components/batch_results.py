@@ -72,13 +72,17 @@ def append_batch_to_history(results: List[Dict[str, Any]]) -> None:
     for item in results:
         if item.get("error"):
             continue
+        sentiment = item.get("sentiment")
+        text = item.get("text", "")
+        if not sentiment:
+            continue
         st.session_state["history"].append({
             "timestamp": now,
-            "language": item["language"],
-            "sentiment": item["sentiment"],
-            "confidence": item["confidence"],
+            "language": item.get("language") or detect_language(str(text)),
+            "sentiment": sentiment,
+            "confidence": item.get("confidence", 0.0),
             "is_reliable": item.get("is_reliable", True),
-            "text": item["text"],
+            "text": text,
         })
 
 

@@ -40,13 +40,14 @@ def get_predictor(model_kind: str = "tfidf"):
 
 
 def append_history(result: Dict[str, Any]) -> None:
+    text = result.get("text", "")
     st.session_state["history"].append({
         "timestamp": datetime.now(timezone.utc).isoformat(),
-        "language": result["language"],
-        "sentiment": result["sentiment"],
-        "confidence": result["confidence"],
+        "language": result.get("language") or detect_language(str(text)),
+        "sentiment": result.get("sentiment", "neutral"),
+        "confidence": result.get("confidence", 0.0),
         "is_reliable": result.get("is_reliable", True),
-        "text": result["text"],
+        "text": text,
     })
 
 
@@ -100,7 +101,7 @@ def render_sidebar_settings(ui_config: Dict[str, Any] | None = None) -> tuple[bo
 
         st.divider()
         if is_cloud_runtime():
-            st.info("☁️ نسخة سحابية — أول تحميل لـ BERT قد يستغرق دقائق.")
+            st.info(" سحابية — أول تحميل لـ BERT قد يستغرق دقائق.")
             st.caption(f"حد الدفعة على السحابة: {cloud_max_batch_size()} تعليق")
 
         st.divider()

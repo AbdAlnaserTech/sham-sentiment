@@ -93,6 +93,47 @@ def _normalize_label(raw: str) -> str:
     return LABEL_NORMALIZE.get(key, key)
 
 
+def _split_pipeline_outputs(outputs: Any, expected_count: int) -> Optional[List[List[Dict[str, Any]]]]:
+    if not outputs or expected_count <= 0 or not isinstance(outputs, list):
+        return None
+
+    if expected_count == 1:
+        if outputs and isinstance(outputs[0], dict):
+            return [outputs]
+        if outputs and isinstance(outputs[0], list):
+            return outputs
+        return None
+
+    if outputs and isinstance(outputs[0], list) and len(outputs) == expected_count:
+        return outputs
+
+    if outputs and isinstance(outputs[0], dict):
+        if len(outputs) == expected_count:
+            return [[item] for item in outputs]
+        if len(outputs) % expected_count == 0:
+            group_size = len(outputs) // expected_count
+            if group_size >= 2:
+                return [
+                    outputs[i * group_size:(i + 1) * group_size]
+                    for i in range(expected_count)
+                ]
+    return None
+
+
+def _batch_error_item(text: Any, language: str, model_name: str, message: str) -> Dict[str, Any]:
+    return {
+        "text": text,
+        "language": language,
+        "cleaned_text": "",
+        "sentiment": "neutral",
+        "confidence": 0.0,
+        "distribution": {},
+        "is_reliable": False,
+        "error": message,
+        "model": model_name,
+    }
+
+
 def _merge_sentiment_scores(
     primary: List[Dict[str, Any]],
     secondary: List[Dict[str, Any]],
@@ -242,6 +283,85 @@ class BertSentimentPredictor:
             "model": self.model_name,
         }
 
+    def _resolve_batch_language(
+        self,
+        index: int,
+        texts: List[str],
+        languages: List[Optional[str]],
+        auto_language: bool,
+    ) -> str:
+        lang = languages[index] if index < len(languages) else None
+        if lang and not auto_language:
+            return lang
+        raw = str(texts[index] or "").strip()
+        return lang or detect_language(raw) if raw else "en"
+
+    def _apply_batch_chunk(
+        self,
+        pipe,
+        texts: List[str],
+        languages: List[Optional[str]],
+        chunk_indices: List[int],
+        chunk: List[str],
+        results: List[Dict[str, Any]],
+        auto_language: bool,
+    ) -> None:
+        try:
+            outputs = pipe(chunk)
+        except Exception as exc:
+            logger.warning("Batch inference failed, falling back to single-item mode: %s", exc)
+            outputs = None
+
+        split = _split_pipeline_outputs(outputs, len(chunk)) if outputs is not None else None
+        if split is not None and len(split) == len(chunk):
+            for idx, scores in zip(chunk_indices, split):
+                lang = self._resolve_batch_language(idx, texts, languages, auto_language)
+                results[idx] = self._scores_to_result(str(texts[idx]), lang, scores)
+            return
+
+        for idx in chunk_indices:
+            raw = str(texts[idx] or "").strip()
+            lang = self._resolve_batch_language(idx, texts, languages, auto_language)
+            try:
+                out = pipe(raw)
+                scores = out[0] if out and isinstance(out[0], list) else out
+                if not isinstance(scores, list):
+                    scores = []
+                results[idx] = self._scores_to_result(raw, lang, scores)
+            except Exception as exc:
+                logger.warning("Single-item inference failed for index %s: %s", idx, exc)
+                results[idx] = _batch_error_item(
+                    texts[idx],
+                    lang,
+                    self.model_name,
+                    f"Analysis failed: {exc}",
+                )
+
+    def _finalize_batch_results(
+        self,
+        results: List[Dict[str, Any]],
+        texts: List[str],
+        languages: List[Optional[str]],
+    ) -> List[Dict[str, Any]]:
+        finalized: List[Dict[str, Any]] = []
+        for index, item in enumerate(results):
+            if item.get("sentiment") and item.get("language") is not None:
+                finalized.append(item)
+                continue
+            if item.get("error"):
+                finalized.append(item)
+                continue
+            lang = self._resolve_batch_language(index, texts, languages, auto_language=True)
+            finalized.append(
+                _batch_error_item(
+                    texts[index],
+                    lang,
+                    self.model_name,
+                    "Analysis failed",
+                )
+            )
+        return finalized
+
     def predict_with_confidence(self, text: str, language: Optional[str] = None) -> Dict[str, Any]:
         if not text or not text.strip():
             raise ValueError("Text must not be empty.")
@@ -312,13 +432,16 @@ class BertSentimentPredictor:
             for start in range(0, len(valid_texts), batch_size):
                 chunk = valid_texts[start:start + batch_size]
                 chunk_indices = valid_indices[start:start + batch_size]
-                outputs = pipe(chunk)
-                if chunk and isinstance(outputs[0], dict):
-                    outputs = [outputs]
-                for idx, scores in zip(chunk_indices, outputs):
-                    lang = languages[idx] if languages[idx] and not auto_language else detect_language(str(texts[idx]))
-                    results[idx] = self._scores_to_result(str(texts[idx]), lang, scores)
-            return results
+                self._apply_batch_chunk(
+                    pipe,
+                    texts,
+                    languages,
+                    chunk_indices,
+                    chunk,
+                    results,
+                    auto_language,
+                )
+            return self._finalize_batch_results(results, texts, languages)
 
         if _model_ready(MULTI_MODEL):
             results: List[Dict[str, Any]] = [{} for _ in texts]
@@ -347,13 +470,16 @@ class BertSentimentPredictor:
             for start in range(0, len(valid_texts), batch_size):
                 chunk = valid_texts[start:start + batch_size]
                 chunk_indices = valid_indices[start:start + batch_size]
-                outputs = pipe(chunk)
-                if chunk and isinstance(outputs[0], dict):
-                    outputs = [outputs]
-                for idx, scores in zip(chunk_indices, outputs):
-                    lang = languages[idx] if languages[idx] and not auto_language else detect_language(str(texts[idx]))
-                    results[idx] = self._scores_to_result(str(texts[idx]), lang, scores)
-            return results
+                self._apply_batch_chunk(
+                    pipe,
+                    texts,
+                    languages,
+                    chunk_indices,
+                    chunk,
+                    results,
+                    auto_language,
+                )
+            return self._finalize_batch_results(results, texts, languages)
 
         results = [{} for _ in texts]
         en_indices: List[int] = []
@@ -390,25 +516,32 @@ class BertSentimentPredictor:
             for start in range(0, len(en_texts), batch_size):
                 chunk = en_texts[start:start + batch_size]
                 chunk_indices = en_indices[start:start + batch_size]
-                outputs = en_pipe(chunk)
-                if chunk and isinstance(outputs[0], dict):
-                    outputs = [outputs]
-                for idx, scores in zip(chunk_indices, outputs):
-                    results[idx] = self._scores_to_result(str(texts[idx]), "en", scores)
+                self._apply_batch_chunk(
+                    en_pipe,
+                    texts,
+                    languages,
+                    chunk_indices,
+                    chunk,
+                    results,
+                    auto_language=False,
+                )
 
         if ar_texts and _model_ready(AR_MODEL):
             ar_pipe = _get_ar_pipeline()
             for start in range(0, len(ar_texts), batch_size):
                 chunk = ar_texts[start:start + batch_size]
                 chunk_indices = ar_indices[start:start + batch_size]
-                outputs = ar_pipe(chunk)
-                if chunk and isinstance(outputs[0], dict):
-                    outputs = [outputs]
-                for idx, scores in zip(chunk_indices, outputs):
-                    lang = languages[idx] if languages[idx] else detect_language(str(texts[idx]))
-                    results[idx] = self._scores_to_result(str(texts[idx]), lang, scores)
+                self._apply_batch_chunk(
+                    ar_pipe,
+                    texts,
+                    languages,
+                    chunk_indices,
+                    chunk,
+                    results,
+                    auto_language,
+                )
 
-        return results
+        return self._finalize_batch_results(results, texts, languages)
 
     def predict_dataframe(
         self,

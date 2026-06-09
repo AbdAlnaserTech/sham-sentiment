@@ -40,7 +40,7 @@ def render_live_import_panel(
     )
 
     st.caption(
-        "⚠️ Facebook / Instagram / TikTok تحتاج API رسمي من الشركة — "
+        " Facebook / Instagram / TikTok تحتاج API رسمي من الشركة — "
         "غير متوفرة هنا. استخدم YouTube أو Google Play أو Reddit، أو ارفع CSV."
     )
 
@@ -64,7 +64,7 @@ def render_live_import_panel(
     with c3:
         play_country = st.selectbox("البلد (Play)", ["sa", "ae", "us", "gb"], index=0)
 
-    fetch_btn = st.button("📥 جلب التعليقات", type="secondary", use_container_width=True)
+    fetch_btn = st.button(" جلب التعليقات", type="secondary", use_container_width=True)
 
     if fetch_btn:
         if not url.strip():
@@ -81,7 +81,7 @@ def render_live_import_panel(
                     )
                 st.session_state["fetched_comments"] = comments
                 st.session_state["fetched_source"] = resolved
-                st.success(f"✅ تم جلب {len(comments)} تعليق/مراجعة من {SOURCE_LABELS.get(resolved, resolved)}")
+                st.success(f" تم جلب {len(comments)} تعليق/مراجعة من {SOURCE_LABELS.get(resolved, resolved)}")
             except FetchDependencyError as exc:
                 st.error(str(exc))
                 st.code("pip install -r requirements_fetch.txt", language="bash")
@@ -103,7 +103,7 @@ def render_live_import_panel(
             hide_index=True,
         )
 
-        analyze_live = st.button("🔍 تحليل كل التعليقات المجلوبة", type="primary", use_container_width=True)
+        analyze_live = st.button(" تحليل كل التعليقات المجلوبة", type="primary", use_container_width=True)
         if analyze_live:
             texts = [item.text for item in comments[:max_batch_size]]
             if len(comments) > max_batch_size:
@@ -116,7 +116,7 @@ def render_live_import_panel(
             on_analyze(texts)
 
         st.download_button(
-            "⬇️ حفظ التعليقات الخام CSV",
+            " حفظ التعليقات الخام CSV",
             data=pd.DataFrame([item.to_dict() for item in comments]).to_csv(index=False).encode("utf-8-sig"),
             file_name=f"fetched_{st.session_state.get('fetched_source', 'comments')}.csv",
             mime="text/csv",
