@@ -75,13 +75,18 @@ def _execute_batch_analysis(comments: list[str]) -> None:
         return
     try:
         predictor = get_predictor(model_kind)
-        with st.spinner(f"جاري تحليل {len(comments)} تعليق..."):
-            out_df, results = run_batch_sentiment_analysis(
-                comments,
-                predictor,
-                auto_lang=auto_lang,
-                lang_choice=lang_choice,
-            )
+        progress = st.progress(0, text=f"جاري تحليل {len(comments)} تعليق...")
+        status = st.empty()
+        out_df, results = run_batch_sentiment_analysis(
+            comments,
+            predictor,
+            auto_lang=auto_lang,
+            lang_choice=lang_choice,
+            progress_bar=progress,
+            status_text=status,
+        )
+        progress.empty()
+        status.empty()
         st.session_state["batch_results"] = out_df
         st.session_state["batch_raw_results"] = results
         append_batch_to_history(results)

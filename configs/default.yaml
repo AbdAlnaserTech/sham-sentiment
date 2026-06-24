@@ -35,7 +35,7 @@ inference:
   confidence_threshold: 55.0
   max_text_length: 5000
   bert_neutral_threshold: 0.58
-  use_finetuned: false
+  use_finetuned: true
   default_model: bert
   max_batch_size: 2000
 

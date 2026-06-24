@@ -137,20 +137,40 @@ def load_comments_from_upload(uploaded_file) -> List[str]:
     return [str(value).strip() for value in df["text"].tolist() if str(value).strip()]
 
 
+BATCH_CHUNK_SIZE = 8
+
+
 def run_batch_sentiment_analysis(
     comments: List[str],
     predictor,
     *,
     auto_lang: bool,
     lang_choice: str,
+    progress_bar=None,
+    status_text=None,
 ) -> tuple[pd.DataFrame, List[Dict[str, Any]]]:
-    languages = None if auto_lang else [lang_choice] * len(comments)
-    raw_results = predictor.predict_batch(
-        comments,
-        languages=languages,
-        auto_language=auto_lang,
-    )
-    results = normalize_batch_results(raw_results, comments)
+    if not comments:
+        return results_to_dataframe([]), []
+
+    all_raw: List[Dict[str, Any]] = []
+    total = len(comments)
+
+    for start in range(0, total, BATCH_CHUNK_SIZE):
+        chunk = comments[start : start + BATCH_CHUNK_SIZE]
+        languages = None if auto_lang else [lang_choice] * len(chunk)
+        chunk_results = predictor.predict_batch(
+            chunk,
+            languages=languages,
+            auto_language=auto_lang,
+        )
+        all_raw.extend(chunk_results)
+        done = min(start + len(chunk), total)
+        if progress_bar is not None:
+            progress_bar.progress(done / total)
+        if status_text is not None:
+            status_text.caption(f"تم تحليل {done} من {total} تعليق...")
+
+    results = normalize_batch_results(all_raw, comments)
     return results_to_dataframe(results), results
 
 

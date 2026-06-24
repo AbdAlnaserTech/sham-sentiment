@@ -58,7 +58,7 @@ def render_live_import_panel(
 
     c1, c2, c3 = st.columns(3)
     with c1:
-        max_items = st.slider("الحد الأقصى", 20, max_batch_size, min(200, max_batch_size), step=10)
+        max_items = st.slider("الحد الأقصى", 20, max_batch_size, min(30, max_batch_size), step=10)
     with c2:
         play_lang = st.selectbox("لغة المراجعات (Play)", ["ar", "en"], index=0)
     with c3:
