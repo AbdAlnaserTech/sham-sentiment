@@ -6,8 +6,8 @@ DEMO_COMMENTS: List[dict] = [
     {"label": "شامي — إيجابي", "text": "الخدمة كتير منيح والتوصيل كان سريع"},
     {"label": "فصحى — سلبي", "text": "المنتج سيئ ولم يلبِّ توقعاتي على الإطلاق"},
     {"label": "فصحى — محايد", "text": "التجربة عادية، لا أكثر ولا أقل"},
-    {"label": "English — Positive", "text": "I genuinely loved the product; it exceeded my expectations."},
-    {"label": "English — Negative", "text": "Terrible experience with customer support."},
+    {"label": "إنجليزي — إيجابي", "text": "I genuinely loved the product; it exceeded my expectations."},
+    {"label": "إنجليزي — سلبي", "text": "Terrible experience with customer support."},
 ]
 
 DEMO_BATCH_TEXT = "\n".join(item["text"] for item in DEMO_COMMENTS)

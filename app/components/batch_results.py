@@ -79,10 +79,10 @@ def render_batch_summary(df: pd.DataFrame) -> None:
 
     valid = df[df["error"].astype(str) == ""]
     c1, c2, c3, c4 = st.columns(4)
-    c1.metric("المجموع / Total", len(df))
-    c2.metric("إيجابي / Positive", int((valid["sentiment"] == "positive").sum()))
-    c3.metric("سلبي / Negative", int((valid["sentiment"] == "negative").sum()))
-    c4.metric("محايد / Neutral", int((valid["sentiment"] == "neutral").sum()))
+    c1.metric("المجموع", len(df))
+    c2.metric("إيجابي", int((valid["sentiment"] == "positive").sum()))
+    c3.metric("سلبي", int((valid["sentiment"] == "negative").sum()))
+    c4.metric("محايد", int((valid["sentiment"] == "neutral").sum()))
 
     if valid.empty:
         return
@@ -90,7 +90,7 @@ def render_batch_summary(df: pd.DataFrame) -> None:
     chart_df = valid["sentiment"].value_counts().reset_index()
     chart_df.columns = ["sentiment", "count"]
     chart_df["label"] = chart_df["sentiment"].map(
-        lambda value: f"{SENTIMENT_LABEL_AR.get(value, value)} ({value})"
+        lambda value: SENTIMENT_LABEL_AR.get(value, value)
     )
     fig = px.bar(
         chart_df,
@@ -102,7 +102,7 @@ def render_batch_summary(df: pd.DataFrame) -> None:
             "negative": "#dc2626",
             "neutral": "#d97706",
         },
-        title="توزيع المشاعر / Sentiment Distribution",
+        title="توزيع المشاعر",
     )
     fig.update_layout(
         paper_bgcolor="rgba(0,0,0,0)",
@@ -185,13 +185,12 @@ def render_batch_results_table(out_df: pd.DataFrame) -> None:
             out_df[column] = "" if column != "confidence" else 0.0
 
     display_df = out_df[[
-        "text", "sentiment_ar", "sentiment", "language", "confidence", "is_reliable", "error"
+        "text", "sentiment_ar", "language", "confidence", "is_reliable", "error"
     ]].rename(columns={
         "text": "التعليق",
         "sentiment_ar": "المشاعر",
-        "sentiment": "sentiment",
         "language": "اللغة",
-        "confidence": "الثقة %",
+        "confidence": "اليقين %",
         "is_reliable": "موثوق",
         "error": "خطأ",
     })

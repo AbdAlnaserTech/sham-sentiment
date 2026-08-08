@@ -9,7 +9,7 @@ import pandas as pd
 from sklearn.feature_extraction.text import CountVectorizer
 
 from language import AR_STOPWORDS, EN_STOPWORDS
-from preprocessing import TextPreprocessor
+from launchers.preprocessing import TextPreprocessor
 
 
 def extract_keywords_by_sentiment(

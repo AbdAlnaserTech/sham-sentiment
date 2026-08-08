@@ -1,27 +1,48 @@
 # Scripts — أدوات سطر الأوامر
 
-كل أدوات المشروع التشغيلية هنا. من جذر المشروع يمكنك تشغيلها بنفس الاسم:
+كل أدوات المشروع التشغيلية التنفيذية هنا. الواجهات القديمة انتقلت إلى [launchers/](../launchers):
 
 ```bash
-python train.py          # = python scripts/train.py
-python evaluate.py
-python compare_models.py
+python scripts/train.py
+python scripts/evaluate.py
+python scripts/compare_models.py
 ```
+
+## المجموعات
+
+### 1) التدريب والتحليل
 
 | الملف | الوظيفة |
 |-------|---------|
 | `train.py` | تدريب نموذج TF-IDF |
-| `compare_algorithms.py` | مقارنة 6 خوارزmيات + حفظ الأفضل |
-| `compare_models.py` | مقارنة TF-IDF vs BERT |
 | `evaluate.py` | تقييم على CSV موسوم |
 | `analyze.py` | تحليل من الطرفية |
-| `prepare_data.py` | دمج بيانات التدريb + validation |
+| `compare_models.py` | مقارنة TF-IDF vs BERT |
+| `compare_algorithms.py` | مقارنة 6 خوارزميات + حفظ الأفضل |
+
+### 2) تجهيز البيانات
+
+| الملف | الوظيفة |
+|-------|---------|
+| `prepare_data.py` | دمج بيانات التدريب + validation |
 | `expand_validation.py` | توسيع مجموعة الاختبار |
-| `finetune_bert.py` | Fine-tune BERT (اختياري) |
-| `download_models.py` | تحميل نماذj HuggingFace |
-| `download_astd.py` | تحميل dataset ASTD |
 | `generate_dataset.py` | توليد بيانات مصنّعة |
+| `download_astd.py` | تحميل dataset ASTD |
+| `download_models.py` | تحميل نماذج HuggingFace |
 | `fetch_comments.py` | جلب تعليقات YouTube / Google Play / Reddit |
+
+### 3) النماذج والخدمات
+
+| الملف | الوظيفة |
+|-------|---------|
+| `finetune_bert.py` | Fine-tune BERT (اختياري) |
 | `run_api.py` | تشغيل FastAPI |
 
-`bootstrap.py` — إعداد المسارات (لا تشغّله مباشرة).
+### 4) ملفات مساعدة
+
+| الملف | الوظيفة |
+|-------|---------|
+| `bootstrap.py` | إعداد المسارات (لا تشغّله مباشرة) |
+
+> إذا كنت تريد مساراً أبسط للتشغيل من جذر المشروع، استخدم ملفات [launchers/](../launchers) التي تعيد التوجيه إلى هذه السكربتات.
+

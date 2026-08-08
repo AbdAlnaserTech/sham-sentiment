@@ -124,6 +124,52 @@ footer { visibility: hidden; }
     padding: 10px 12px;
     margin-bottom: 0.75rem;
 }
+.sidebar-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--primary-light);
+    border: 1px solid var(--border);
+    border-right: 3px solid var(--primary);
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 0.75rem;
+}
+.sidebar-brand-logo {
+    width: 42px;
+    height: 42px;
+    object-fit: contain;
+    flex-shrink: 0;
+}
+.sidebar-brand-fallback {
+    width: 42px;
+    height: 42px;
+    border-radius: 8px;
+    background: var(--primary);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 1.1rem;
+    flex-shrink: 0;
+}
+.sidebar-brand-uni {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1.3;
+}
+.sidebar-brand-title {
+    font-size: 0.78rem;
+    color: #475569;
+    line-height: 1.3;
+}
+.sidebar-brand-sub {
+    font-size: 0.68rem;
+    color: #64748b;
+    line-height: 1.3;
+}
 .author-icon {
     font-size: 1.6rem;
     line-height: 1;

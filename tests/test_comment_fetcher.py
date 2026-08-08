@@ -6,6 +6,7 @@ from data.comment_fetcher import (
     FetchError,
     detect_source,
     extract_google_play_id,
+    extract_reddit_post_url,
     extract_youtube_video_id,
 )
 
@@ -34,3 +35,26 @@ def test_play_id_from_url():
 def test_invalid_youtube():
     with pytest.raises(FetchError):
         extract_youtube_video_id("not-a-url")
+
+
+def test_reddit_placeholder_rejected():
+    with pytest.raises(FetchError):
+        extract_reddit_post_url(
+            "https://www.reddit.com/r/technology/comments/xxxxx/some_post_title/"
+        )
+
+
+def test_reddit_example_from_docs_rejected():
+    with pytest.raises(FetchError):
+        extract_reddit_post_url(
+            "https://www.reddit.com/r/technology/comments/1abc2de/post_title_here/"
+        )
+
+
+def test_reddit_valid_url():
+    json_url, sub, post_id = extract_reddit_post_url(
+        "https://www.reddit.com/r/python/comments/abc12345/what_are_you_working_on/"
+    )
+    assert sub == "python"
+    assert post_id == "abc12345"
+    assert "old.reddit.com/r/python/comments/abc12345/.json" in json_url

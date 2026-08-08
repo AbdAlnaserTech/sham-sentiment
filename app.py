@@ -1,4 +1,7 @@
-"""Launch the Streamlit application."""
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
+pip freeze > requirements.lock.txt"""Launch the Streamlit application."""
 
 import subprocess
 import sys

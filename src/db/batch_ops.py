@@ -1,0 +1,59 @@
+"""Batch export and delete helpers."""
+
+from __future__ import annotations
+
+import pandas as pd
+
+from db.database import get_connection
+
+
+def fetch_all_saved_items() -> pd.DataFrame:
+    with get_connection() as conn:
+        rows = conn.execute(
+            """
+            SELECT
+                b.id AS batch_id,
+                b.title AS batch_title,
+                b.source AS batch_source,
+                b.created_at AS batch_date,
+                i.text AS comment,
+                i.language,
+                i.sentiment,
+                i.confidence,
+                i.is_reliable,
+                i.error,
+                i.created_at AS analyzed_at
+            FROM analysis_items i
+            JOIN analysis_batches b ON b.id = i.batch_id
+            ORDER BY i.id DESC
+            """
+        ).fetchall()
+    if not rows:
+        return pd.DataFrame(
+            columns=[
+                "batch_id",
+                "batch_title",
+                "batch_source",
+                "batch_date",
+                "comment",
+                "language",
+                "sentiment",
+                "confidence",
+                "is_reliable",
+                "error",
+                "analyzed_at",
+            ]
+        )
+    return pd.DataFrame([dict(row) for row in rows])
+
+
+def delete_batch(batch_id: int) -> bool:
+    with get_connection() as conn:
+        cursor = conn.execute("DELETE FROM analysis_batches WHERE id = ?", (batch_id,))
+        return cursor.rowcount > 0
+
+
+def delete_all_saved_batches() -> int:
+    with get_connection() as conn:
+        cursor = conn.execute("DELETE FROM analysis_batches")
+        return int(cursor.rowcount or 0)

@@ -28,7 +28,7 @@ from data.loader import load_labeled_csv  # noqa: E402
 from logging_utils import logger, save_json  # noqa: E402
 from models.trainer import build_text_column  # noqa: E402
 from paths import ProjectPaths  # noqa: E402
-from preprocessing import TextPreprocessor  # noqa: E402
+from launchers.preprocessing import TextPreprocessor  # noqa: E402
 
 
 def _algorithm_specs(grid_c: list[float]) -> dict:

@@ -99,17 +99,11 @@ app = FastAPI(
 
 
 app.add_middleware(
-
     CORSMiddleware,
-
-    allow_origins=["*"],
-
-    allow_credentials=True,
-
-    allow_methods=["*"],
-
+    allow_origins=os.environ.get("SENTIMENT_CORS_ORIGINS", "*").split(","),
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
-
 )
 
 
@@ -265,13 +259,11 @@ def analyze_batch(request: BatchRequest):
         summary = {}
 
         for item in results:
-
             if item.get("error"):
-
                 continue
-
-            key = item["sentiment"]
-
+            key = item.get("sentiment")
+            if not key:
+                continue
             summary[key] = summary.get(key, 0) + 1
 
 
@@ -286,8 +278,7 @@ def analyze_batch(request: BatchRequest):
 
 
 
-@app.post("/api/v1/batch/upload")
-
+@app.post("/api/v1/batch/upload", dependencies=[Depends(verify_api_key)])
 async def analyze_batch_upload(file: UploadFile = File(...), model: ModelKind = "tfidf"):
 
     import io

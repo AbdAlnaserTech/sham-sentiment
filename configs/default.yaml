@@ -53,7 +53,7 @@ ui:
     - ar_shami
   university_name_ar: "جامعة الشام"
   university_name_en: "Sham University"
-  department_ar: "قسم علوم الحاسوب — مشروع تخرج"
+  department_ar: "قسم الهندسة المعلوماتية"
   logo_path: assets/logo.png
   author_name_ar: "عبد الناصر حسون"
   author_name_en: "Abd Al-Nasser Hassoun"

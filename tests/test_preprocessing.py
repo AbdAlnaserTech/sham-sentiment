@@ -1,4 +1,4 @@
-from preprocessing import TextPreprocessor
+from launchers.preprocessing import TextPreprocessor
 
 
 def test_preprocess_english_removes_stopwords():

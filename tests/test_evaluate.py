@@ -25,7 +25,7 @@ def test_load_validation_dataset():
     reason="Trained model not available",
 )
 def test_evaluate_validation():
-    from evaluate import evaluate_on_labeled_csv
+    from launchers.evaluate import evaluate_on_labeled_csv
 
     path = os.path.join(ROOT, "data", "real", "validation_comments.csv")
     result = evaluate_on_labeled_csv(path, root_dir=ROOT)

@@ -6,11 +6,50 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 
-from analytics.alerts import predict_trend_label
+from db.batch_ops import delete_all_saved_batches, delete_batch, fetch_all_saved_items
 from db.repository import fetch_dashboard_stats, list_batches
+from language import SENTIMENT_LABEL_AR
+from reports.export import export_excel_bytes
+
+_SOURCE_LABELS = {
+    "manual": "يدوي",
+    "single": "تعليق واحد",
+    "live:youtube": "YouTube",
+    "live:google_play": "Google Play",
+    "live:reddit": "Reddit",
+}
 
 
-def render_dashboard() -> None:
+def _format_batch_source(source: str) -> str:
+    if source in _SOURCE_LABELS:
+        return _SOURCE_LABELS[source]
+    if source.startswith("live:"):
+        return _SOURCE_LABELS.get(source, source.replace("live:", ""))
+    return source
+
+
+def _batches_display_df(batches: list) -> pd.DataFrame:
+    df = pd.DataFrame(batches)
+    if df.empty:
+        return df
+    display = df[[
+        "id", "title", "source", "total_count", "positive_count",
+        "negative_count", "neutral_count", "created_at",
+    ]].rename(columns={
+        "id": "الرقم",
+        "title": "العنوان",
+        "source": "المصدر",
+        "total_count": "العدد",
+        "positive_count": "إيجابي",
+        "negative_count": "سلبي",
+        "neutral_count": "محايد",
+        "created_at": "التاريخ",
+    })
+    display["المصدر"] = df["source"].map(_format_batch_source)
+    return display
+
+
+def render_dashboard(*, can_manage_data: bool = False) -> None:
     stats = fetch_dashboard_stats()
     totals = stats["totals"]
 
@@ -19,7 +58,7 @@ def render_dashboard() -> None:
     if int(totals.get("batches") or 0) == 0:
         st.info(
             "لا توجد تحليلات محفوظة بعد. "
-            "جرّب «تعليق واحد» أو «مجموعة تعليقات» — أو زر **تحميل أمثلة الدفعة** من الشريط الجانبي."
+            "جرّب «تعليق واحد» أو «مجموعة تعليقات»."
         )
 
     c1, c2, c3, c4, c5 = st.columns(5)
@@ -27,15 +66,17 @@ def render_dashboard() -> None:
     c2.metric("التعليقات", int(totals.get("items") or 0))
     c3.metric("إيجابي", int(totals.get("positive") or 0))
     c4.metric("سلبي", int(totals.get("negative") or 0))
-    c5.metric("متوسط الثقة", f"{float(totals.get('avg_confidence') or 0):.1f}%")
+    c5.metric("متوسط اليقين", f"{float(totals.get('avg_confidence') or 0):.1f}%")
 
     if int(totals.get("items") or 0) > 0:
-        trend = predict_trend_label(
-            int(totals.get("positive") or 0),
-            int(totals.get("negative") or 0),
-            int(totals.get("neutral") or 0),
-        )
-        st.info(f"**الاتجاه العام:** {trend['label_ar']} — {trend['recommendation_ar']}")
+        pos = int(totals.get("positive") or 0)
+        neg = int(totals.get("negative") or 0)
+        neu = int(totals.get("neutral") or 0)
+        total = pos + neg + neu
+        if total > 0:
+            dominant = max((pos, "إيجابي"), (neg, "سلبي"), (neu, "محايد"), key=lambda x: x[0])
+            pct = dominant[0] * 100 // total
+            st.caption(f"**الصورة العامة:** {dominant[1]} ({pct}% من التعليقات المحفوظة)")
 
     col_chart, col_alerts = st.columns([1.2, 1])
 
@@ -61,27 +102,14 @@ def render_dashboard() -> None:
             fig.update_layout(margin=dict(t=40, b=20, l=20, r=20))
             st.plotly_chart(fig, use_container_width=True)
 
-        recent = stats.get("recent_batches") or []
-        if recent:
-            line_df = pd.DataFrame(recent).sort_values("created_at")
-            fig2 = px.line(
-                line_df,
-                x="created_at",
-                y="negative_count",
-                markers=True,
-                title="تطور التعليقات السلبية (آخر الدفعات)",
-            )
-            fig2.update_layout(margin=dict(t=40, b=20, l=20, r=20))
-            st.plotly_chart(fig2, use_container_width=True)
-
     with col_alerts:
-        st.markdown("#### التنبيهات")
+        st.markdown("#### ملاحظات")
         unread = int(stats.get("unread_alerts") or 0)
         if unread:
-            st.warning(f"{unread} تنبيه غير مقروء")
+            st.warning(f"{unread} ملاحظة جديدة")
         alerts = stats.get("recent_alerts") or []
         if not alerts:
-            st.caption("لا توجد تنبيهات بعد.")
+            st.caption("لا توجد ملاحظات بعد.")
         for alert in alerts:
             icon = {"critical": "🔴", "warning": "🟠", "info": "🔵"}.get(alert["severity"], "•")
             st.markdown(f"{icon} **{alert['title']}** — {alert['message']}")
@@ -91,7 +119,107 @@ def render_dashboard() -> None:
     batches = list_batches(limit=20)
     if batches:
         st.dataframe(
-            pd.DataFrame(batches),
+            _batches_display_df(batches),
             use_container_width=True,
             hide_index=True,
         )
+
+    if int(totals.get("items") or 0) > 0:
+        with st.expander("إدارة البيانات المحفوظة", expanded=False):
+            st.caption("صدّر نسخة احتياطية قبل أي حذف — الحذف نهائي.")
+            all_items = fetch_all_saved_items()
+            if not all_items.empty:
+                export_df = all_items.copy()
+                export_df["sentiment_ar"] = export_df["sentiment"].map(
+                    lambda value: SENTIMENT_LABEL_AR.get(value, value)
+                )
+                export_df = export_df[[
+                    "batch_id",
+                    "batch_title",
+                    "batch_source",
+                    "batch_date",
+                    "comment",
+                    "language",
+                    "sentiment_ar",
+                    "confidence",
+                    "is_reliable",
+                    "error",
+                    "analyzed_at",
+                ]].rename(columns={
+                    "batch_id": "رقم الدفعة",
+                    "batch_title": "العنوان",
+                    "batch_source": "المصدر",
+                    "batch_date": "تاريخ الدفعة",
+                    "comment": "التعليق",
+                    "language": "اللغة",
+                    "sentiment_ar": "المشاعر",
+                    "confidence": "اليقين %",
+                    "is_reliable": "موثوق",
+                    "error": "خطأ",
+                    "analyzed_at": "تاريخ التحليل",
+                })
+                export_df["المصدر"] = export_df["المصدر"].map(_format_batch_source)
+                c1, c2 = st.columns(2)
+                with c1:
+                    st.download_button(
+                        "تحميل CSV",
+                        data=export_df.to_csv(index=False).encode("utf-8-sig"),
+                        file_name="كل_التعليقات_المحفوظة.csv",
+                        mime="text/csv",
+                        use_container_width=True,
+                        key="export_all_csv",
+                    )
+                with c2:
+                    st.download_button(
+                        "تحميل Excel",
+                        data=export_excel_bytes(export_df, sheet_name="SavedComments"),
+                        file_name="كل_التعليقات_المحفوظة.xlsx",
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        use_container_width=True,
+                        key="export_all_xlsx",
+                    )
+
+            if can_manage_data and int(totals.get("batches") or 0) > 0:
+                st.divider()
+                st.markdown("**حذف (مدير النظام)**")
+                batches = list_batches(limit=100)
+                batch_labels = {
+                    b["id"]: f"#{b['id']} — {b['title']} ({b['total_count']} تعليق)"
+                    for b in batches
+                }
+                selected_id = st.selectbox(
+                    "دفعة للحذف",
+                    options=list(batch_labels.keys()),
+                    format_func=lambda batch_id: batch_labels[batch_id],
+                    key="delete_batch_select",
+                )
+                confirm_one = st.checkbox("أؤكد حذف الدفعة المحددة", key="confirm_delete_one")
+                if st.button(
+                    "حذف الدفعة",
+                    use_container_width=True,
+                    disabled=not confirm_one,
+                    key="delete_one_batch",
+                ):
+                    if delete_batch(int(selected_id)):
+                        st.session_state.pop("batch_save_msg", None)
+                        st.success(f"تم حذف الدفعة #{selected_id}.")
+                        st.rerun()
+                    else:
+                        st.error("تعذّر حذف الدفعة.")
+
+                st.divider()
+                confirm_all = st.checkbox("أؤكد حذف كل البيانات", key="confirm_delete_all")
+                if st.button(
+                    "حذف الكل",
+                    use_container_width=True,
+                    disabled=not confirm_all,
+                    key="delete_all_batches",
+                ):
+                    deleted = delete_all_saved_batches()
+                    st.session_state.pop("batch_results", None)
+                    st.session_state.pop("batch_raw_results", None)
+                    st.session_state.pop("batch_save_msg", None)
+                    st.success(f"تم حذف {deleted} دفعة.")
+                    st.rerun()
+            elif int(totals.get("batches") or 0) > 0:
+                st.caption("الحذف متاح لحساب مدير النظام فقط.")

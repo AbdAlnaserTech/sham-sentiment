@@ -17,4 +17,4 @@ if __name__ == "__main__":
     db = init_database(paths.db_path)
     ensure_default_users()
     print(f"Database ready: {db}")
-    print("Demo users: admin / Admin@2026 | analyst / Analyst@2026")
+    print("Default users initialized.")

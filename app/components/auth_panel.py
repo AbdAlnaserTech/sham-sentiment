@@ -48,7 +48,7 @@ def render_login_form() -> bool:
         return True
 
     st.markdown("### تسجيل الدخول")
-    st.caption("منصة تحليل المشاعر — جامعة الشام")
+    st.caption("منصة تحليل آراء العملاء — جامعة الشام")
 
     with st.form("login_form"):
         username = st.text_input("اسم المستخدم")
@@ -62,17 +62,6 @@ def render_login_form() -> bool:
             st.rerun()
         else:
             st.error("بيانات الدخول غير صحيحة.")
-
-    with st.expander("حسابات العرض (Demo)"):
-        st.markdown(
-            """
-            | الدور | المستخدم | كلمة المرور |
-            |-------|----------|-------------|
-            | مدير | `admin` | `Admin@2026` |
-            | محلل | `analyst` | `Analyst@2026` |
-            | عرض | `viewer` | `Viewer@2026` |
-            """
-        )
 
     try:
         from config import load_config
@@ -101,6 +90,6 @@ def render_user_menu() -> None:
     st.sidebar.markdown(f"**{user.get('full_name_ar', user['username'])}**")
     role_ar = ROLE_LABELS_AR.get(user["role"], user["role"])
     st.sidebar.caption(f"الدور: {role_ar}")
-    if st.sidebar.button("تسجيل الخروج", use_container_width=True):
+    if st.sidebar.button("تسجيل الخروج من الحساب إن أردت", use_container_width=True):
         st.session_state["auth_user"] = None
         st.rerun()

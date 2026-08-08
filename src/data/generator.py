@@ -12,7 +12,7 @@ _SRC = os.path.join(_ROOT, "src")
 if _SRC not in sys.path:
     sys.path.insert(0, _SRC)
 
-from augmentation import (  # noqa: E402
+from launchers.augmentation import (  # noqa: E402
     OptionalAugmenters,
     Paraphraser,
     add_social_flavor,

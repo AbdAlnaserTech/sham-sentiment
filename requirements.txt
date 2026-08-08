@@ -21,15 +21,24 @@ python-bidi>=0.4.2
 lime>=0.2.0.1
 openpyxl>=3.1.2
 
-# BERT + cloud deploy (CPU wheels work on Streamlit Cloud free tier)
+# Transformers / BERT (optional, large)
+# Use CPU wheels on some hosts; keep index for PyTorch CPU builds
 --extra-index-url https://download.pytorch.org/whl/cpu
 torch>=2.2.0
 transformers>=4.41.0
 sentencepiece>=0.2.0
 accelerate>=0.30.0
 huggingface_hub>=0.23.0
+datasets>=2.19.0
 
-# Live comment fetch (optional tab)
+# Optional: fetch real comments from web
 youtube-comment-downloader>=0.1.76
 google-play-scraper>=1.2.7
 requests>=2.31.0
+
+# Optional: augmentation / advanced NLP
+nlpaug>=1.1.11
+
+# Development / testing
+pytest>=8.2.0
+pytest-cov>=5.0.0

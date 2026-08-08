@@ -12,11 +12,13 @@ from paths import ProjectPaths
 
 
 def ensure_default_users() -> None:
+    import os
+
     init_database()
     defaults = [
-        ("admin", "Admin@2026", "admin", "عبد الناصر حسون", "Abd Al-Nasser Hassoun"),
-        ("analyst", "Analyst@2026", "analyst", "محلل", "Analyst"),
-        ("viewer", "Viewer@2026", "viewer", "عارض", "Viewer"),
+        ("admin", os.environ.get("SENTIMENT_ADMIN_PASSWORD", "Admin@2026"), "admin", "عبد الناصر حسون", "Abd Al-Nasser Hassoun"),
+        ("analyst", os.environ.get("SENTIMENT_ANALYST_PASSWORD", "Analyst@2026"), "analyst", "محلل", "Analyst"),
+        ("viewer", os.environ.get("SENTIMENT_VIEWER_PASSWORD", "Viewer@2026"), "viewer", "عارض", "Viewer"),
     ]
     with get_connection() as conn:
         for username, password, role, name_ar, name_en in defaults:

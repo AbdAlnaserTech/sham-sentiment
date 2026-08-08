@@ -23,7 +23,7 @@ from evaluation.plots import (
 )
 from logging_utils import logger, save_json
 from paths import ProjectPaths, ensure_dirs
-from preprocessing import TextPreprocessor
+from launchers.preprocessing import TextPreprocessor
 
 
 def build_text_column(df: pd.DataFrame, preprocessor: TextPreprocessor | None = None) -> pd.Series:

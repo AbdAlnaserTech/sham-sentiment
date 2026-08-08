@@ -13,7 +13,9 @@ YOUTUBE_ID_RE = re.compile(
     r"(?:youtube\.com/(?:watch\?v=|shorts/|embed/)|youtu\.be/)([A-Za-z0-9_-]{11})"
 )
 PLAY_ID_RE = re.compile(r"[?&]id=([A-Za-z0-9._]+)")
-REDDIT_RE = re.compile(r"reddit\.com/r/[^/]+/comments/([A-Za-z0-9]+)", re.I)
+REDDIT_RE = re.compile(r"reddit\.com/r/([^/]+)/comments/([A-Za-z0-9]+)", re.I)
+REDDIT_PLACEHOLDER_IDS = frozenset({"xxxxx", "id", "post_id", "postid", "abc", "123", "title", "1abc2de"})
+REDDIT_PLACEHOLDER_SLUGS = frozenset({"post_title_here", "some_post_title", "example_title", "title"})
 
 
 @dataclass
@@ -80,13 +82,51 @@ def extract_google_play_id(url_or_id: str) -> str:
     )
 
 
-def extract_reddit_post_url(url: str) -> str:
+def extract_reddit_post_url(url: str) -> tuple[str, str, str]:
+    """Return (json_url, subreddit, post_id)."""
     raw = (url or "").strip().rstrip("/")
-    if not REDDIT_RE.search(raw):
-        raise FetchError("رابط Reddit غير صالح. مثال: https://www.reddit.com/r/.../comments/...")
-    if not raw.endswith(".json"):
-        raw = f"{raw.split('?')[0]}.json"
-    return raw
+    match = REDDIT_RE.search(raw)
+    if not match:
+        raise FetchError(
+            "رابط Reddit غير صالح. افتح منشوراً على Reddit ثم انسخ الرابط من المتصفح."
+        )
+    subreddit, post_id = match.group(1), match.group(2).lower()
+    slug = raw.split(f"/comments/{match.group(2)}/")[-1].split("/")[0].split("?")[0].lower()
+    if post_id in REDDIT_PLACEHOLDER_IDS or slug in REDDIT_PLACEHOLDER_SLUGS or len(post_id) < 5:
+        raise FetchError(
+            "الرابط يبدو مثالاً وليس منشوراً حقيقياً. "
+            "افتح Reddit، اختر منشوراً، وانسخ رابطه الكامل."
+        )
+    json_url = (
+        f"https://old.reddit.com/r/{subreddit}/comments/{post_id}/.json"
+        f"?limit=500&raw_json=1"
+    )
+    return json_url, subreddit, post_id
+
+
+def _reddit_request_headers() -> Dict[str, str]:
+    return {
+        "User-Agent": (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/121.0.0.0 Safari/537.36"
+        ),
+        "Accept": "application/json",
+        "Accept-Language": "en-US,en;q=0.9",
+    }
+
+
+def _reddit_fetch_error(status_code: int) -> FetchError:
+    if status_code == 404:
+        return FetchError("المنشور غير موجود — تحقق أن الرابط صحيحاً.")
+    if status_code == 403:
+        return FetchError(
+            "تعذّر الوصول إلى Reddit من هذا الجهاز. "
+            "جرّب رابط منشور آخر، أو استخدم YouTube / Google Play."
+        )
+    if status_code == 429:
+        return FetchError("طلبات كثيرة — انتظر دقيقة ثم أعد المحاولة.")
+    return FetchError("تعذّر جلب التعليقات — تحقق من الرابط أو جرّب مصدراً آخر.")
 
 
 def _clean_text(text: str) -> str:
@@ -219,16 +259,23 @@ def fetch_reddit_comments(url: str, max_comments: int = 500) -> List[FetchedComm
     except ImportError as exc:
         raise FetchDependencyError("ثبّت الحزمة: pip install requests") from exc
 
-    json_url = extract_reddit_post_url(url)
-    post_id = REDDIT_RE.search(url).group(1)
-    headers = {"User-Agent": "sentiment-graduation-project/1.0 (education)"}
+    json_url, _subreddit, post_id = extract_reddit_post_url(url)
+    headers = _reddit_request_headers()
+    fallback_url = json_url.replace("old.reddit.com", "www.reddit.com")
 
     try:
         response = requests.get(json_url, headers=headers, timeout=30)
-        response.raise_for_status()
+        if response.status_code in (403, 404) and "old.reddit.com" in json_url:
+            response = requests.get(fallback_url, headers=headers, timeout=30)
+        if response.status_code >= 400:
+            raise _reddit_fetch_error(response.status_code)
         payload = response.json()
-    except Exception as exc:
-        raise FetchError(f"فشل جلب تعليقات Reddit: {exc}") from exc
+    except FetchError:
+        raise
+    except requests.RequestException as exc:
+        raise FetchError("تعذّر الاتصال بـ Reddit. تحقق من الإنترنت والرابط.") from exc
+    except ValueError as exc:
+        raise FetchError("استجابة Reddit غير متوقعة — جرّب رابطاً آخر.") from exc
 
     items: List[FetchedComment] = []
     if isinstance(payload, list) and len(payload) >= 2:
@@ -239,7 +286,7 @@ def fetch_reddit_comments(url: str, max_comments: int = 500) -> List[FetchedComm
                 break
 
     if not items:
-        raise FetchError("لم يُعثر على تعليقات — تأكد أن المنشور عاماً.")
+        raise FetchError("لم يُعثر على تعليقات — تأكد أن المنشور عاماً ويحتوي رداً.")
     return items
 
 

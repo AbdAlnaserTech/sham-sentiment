@@ -75,12 +75,39 @@ def render_author_badge(ui_config: Optional[Dict[str, Any]] = None, compact: boo
     )
 
 
+def render_sidebar_brand(ui_config: Optional[Dict[str, Any]] = None) -> None:
+    ui_config = ui_config or {}
+    uni_ar = ui_config.get("university_name_ar", "جامعة الشام").strip()
+    dept = ui_config.get("department_ar", "قسم الهندسة المعلوماتية")
+    logo_path = _resolve_logo_path(ui_config)
+    logo_src = _load_logo_base64(logo_path)
+
+    logo_html = (
+        f'<img src="{logo_src}" alt="{uni_ar}" class="sidebar-brand-logo" />'
+        if logo_src
+        else f'<div class="sidebar-brand-fallback">{uni_ar[0] if uni_ar else "ش"}</div>'
+    )
+
+    st.markdown(
+        f"""
+        <div class="sidebar-brand">
+            {logo_html}
+            <div class="sidebar-brand-text">
+                <div class="sidebar-brand-uni">{uni_ar}</div>
+                <div class="sidebar-brand-title">تحليل مشاعر التعليقات</div>
+                <div class="sidebar-brand-sub">{dept}</div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
 def render_app_header(ui_config: Optional[Dict[str, Any]] = None) -> None:
     ui_config = ui_config or {}
     uni_ar = ui_config.get("university_name_ar", "جامعة الشام").strip()
     uni_en = ui_config.get("university_name_en", "Sham University")
-    dept = ui_config.get("department_ar", "قسم علوم الحاسوب — مشروع تخرج")
-    name_ar, name_en, label = _author_info(ui_config)
+    dept = ui_config.get("department_ar", "قسم الهندسة المعلوماتية")
     logo_path = _resolve_logo_path(ui_config)
     logo_src = _load_logo_base64(logo_path)
 
@@ -99,12 +126,7 @@ def render_app_header(ui_config: Optional[Dict[str, Any]] = None) -> None:
                     <div class="hero-uni">{uni_ar}</div>
                     <div class="hero-uni-sub">{uni_en} · {dept}</div>
                     <h1>تحليل مشاعر التعليقات</h1>
-                    <p>Multilingual Sentiment Analysis — English · Arabic · Levantine Dialect</p>
-                    <div class="hero-meta">
-                        <span>{label}: <strong>{name_ar}</strong></span>
-                        <span class="hero-meta-sep">|</span>
-                        <span>{name_en}</span>
-                    </div>
+                    <p>منصة لتحليل آراء العملاء — عربي · إنجليزي · لهجة شامية</p>
                 </div>
             </div>
         </div>
@@ -128,12 +150,12 @@ def render_empty_result_panel() -> None:
 def render_app_footer(ui_config: Optional[Dict[str, Any]] = None) -> None:
     ui_config = ui_config or {}
     uni_ar = ui_config.get("university_name_ar", "جامعة الشام").strip()
-    name_ar, name_en, label = _author_info(ui_config)
+    dept = ui_config.get("department_ar", "قسم الهندسة المعلوماتية")
     st.markdown(
         f"""
         <div class="app-footer">
-            {uni_ar} · مشروع تخرج — تحليل المشاعر متعدد اللغات<br>
-            <strong>{label}:</strong> {name_ar} ({name_en})
+            {uni_ar} · {dept}<br>
+            منصة تحليل آراء العملاء
         </div>
         """,
         unsafe_allow_html=True,

@@ -1,18 +1,19 @@
 import bootstrap  # noqa: F401
 from datetime import datetime, timezone
-from typing import Any, Dict, List
+from typing import Any, Dict
 
 import streamlit as st
 
-from components.demo_guide import render_defense_sidebar
-from components.app_header import render_author_badge
+from components.app_header import render_sidebar_brand
+from components.sidebar_panel import render_sidebar_extras
 from config import load_config
 from language import detect_language
-from models.registry import available_models, load_predictor
+from models.registry import load_predictor
 from paths import ProjectPaths, ensure_dirs, get_project_root
-from cloud_setup import bootstrap_cloud, cloud_max_batch_size, is_cloud_runtime
+from cloud_setup import bootstrap_cloud
 
 ModelKind = str
+DEFAULT_MODEL = "bert"
 
 
 def init_app() -> tuple[ProjectPaths, Any]:
@@ -23,19 +24,15 @@ def init_app() -> tuple[ProjectPaths, Any]:
 
     if "history" not in st.session_state:
         st.session_state["history"] = []
-    if "model_kind" not in st.session_state:
-        default_model = config.inference.get("default_model", "bert")
-        if is_cloud_runtime():
-            default_model = "bert"
-        st.session_state["model_kind"] = default_model
     if "dark_mode" not in st.session_state:
         st.session_state["dark_mode"] = False
+    st.session_state["model_kind"] = DEFAULT_MODEL
 
     return paths, config
 
 
-@st.cache_resource(show_spinner="جاري تحميل النموذج...")
-def get_predictor(model_kind: str = "tfidf"):
+@st.cache_resource(show_spinner="جاري تحميل النظام...")
+def get_predictor(model_kind: str = DEFAULT_MODEL):
     return load_predictor(model_kind, root_dir=get_project_root())
 
 
@@ -51,78 +48,16 @@ def append_history(result: Dict[str, Any]) -> None:
     })
 
 
-def render_sidebar_settings(ui_config: Dict[str, Any] | None = None) -> tuple[bool, str, str, bool, bool, bool]:
+def render_sidebar_settings(ui_config: Dict[str, Any] | None = None) -> tuple[bool, str, str, bool, bool]:
     ui_config = ui_config or load_config().ui
+    model_kind = DEFAULT_MODEL
+    rtl_mode = True
+
     with st.sidebar:
-        render_author_badge(ui_config, compact=True)
-        st.markdown("### الإعدادات")
+        render_sidebar_brand(ui_config)
+        auto_lang, lang_choice, dark_mode = render_sidebar_extras(ui_config)
 
-        models = available_models(get_project_root())
-        options = [key for key, info in models.items() if info.get("available", True)]
-        labels = {key: models[key]["label"] for key in options}
-
-        current = st.session_state.get("model_kind", "bert")
-        if current not in options:
-            current = options[0]
-
-        st.markdown("**النموذج**")
-        model_kind = st.selectbox(
-            "Model",
-            options=options,
-            index=options.index(current),
-            format_func=lambda x: labels.get(x, x),
-            label_visibility="collapsed",
-        )
-        st.session_state["model_kind"] = model_kind
-        st.caption(models[model_kind].get("description", ""))
-
-        st.divider()
-        st.markdown("**اللغة**")
-        auto_lang = st.toggle("كشف تلقائي للغة", value=True)
-        lang_choice = st.selectbox(
-            "Language",
-            options=["en", "ar_fusha", "ar_shami"],
-            disabled=auto_lang,
-            label_visibility="collapsed",
-        )
-
-        st.divider()
-        st.markdown("**المظهر**")
-        dark_mode = st.toggle("الوضع الداكن", value=st.session_state.get("dark_mode", False))
-        st.session_state["dark_mode"] = dark_mode
-        rtl_mode = st.toggle("واجهة عربية (RTL)", value=True)
-
-        st.divider()
-        st.markdown("**خيارات متقدمة**")
-        compare_models = st.toggle("مقارنة TF-IDF vs BERT", value=False)
-
-        st.divider()
-        render_defense_sidebar()
-
-        st.divider()
-        if is_cloud_runtime():
-            st.info(" سحابية — أول تحميل لـ BERT قد يستغرق دقائق.")
-            st.caption(f"حد الدفعة على السحابة: {cloud_max_batch_size()} تعليق")
-
-        st.divider()
-        st.markdown("**تصدير**")
-        history: List[Dict[str, Any]] = st.session_state.get("history", [])
-        if history:
-            import pandas as pd
-
-            hist_df = pd.DataFrame(history)
-            st.download_button(
-                "تحميل سجل التحليلات CSV",
-                data=hist_df.to_csv(index=False).encode("utf-8"),
-                file_name=f"predictions_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.csv",
-                mime="text/csv",
-                use_container_width=True,
-            )
-            st.caption(f"{len(history)} تحليل محفوظ")
-        else:
-            st.caption("لم تُجرَ أي تحليلات بعد.")
-
-    return auto_lang, lang_choice, model_kind, compare_models, rtl_mode, dark_mode
+    return auto_lang, lang_choice, model_kind, rtl_mode, dark_mode
 
 
 def resolve_language(text: str, auto_lang: bool, lang_choice: str) -> str:
