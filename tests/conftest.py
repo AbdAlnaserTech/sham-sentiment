@@ -1,3 +1,5 @@
+"""إعداد pytest — إضافة src إلى مسار Python."""
+
 import sys
 import os
 

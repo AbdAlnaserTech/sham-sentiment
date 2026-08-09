@@ -1,4 +1,4 @@
-"""Generate PDF report from docs/report.md"""
+"""توليد تقرير PDF من docs/report.md."""
 
 import argparse
 import os
@@ -6,6 +6,7 @@ import re
 
 
 def _reshape_arabic(text: str) -> str:
+    """إعادة تشكيل النص العربي للعرض الصحيح في PDF (RTL)."""
     try:
         import arabic_reshaper
         from bidi.algorithm import get_display
@@ -16,6 +17,7 @@ def _reshape_arabic(text: str) -> str:
 
 
 def _find_font() -> str | None:
+    """البحث عن خط يدعم العربية في Windows (Arial أو Tahoma)."""
     windir = os.environ.get("WINDIR", r"C:\Windows")
     for name in ("arial.ttf", "tahoma.ttf"):
         path = os.path.join(windir, "Fonts", name)
@@ -25,6 +27,7 @@ def _find_font() -> str | None:
 
 
 def _safe_text(text: str) -> str:
+    """تنظيف النص واقتصاصه إذا تجاوز 400 حرف."""
     text = text.replace("\t", " ").strip()
     if len(text) > 400:
         text = text[:397] + "..."
@@ -32,6 +35,7 @@ def _safe_text(text: str) -> str:
 
 
 def _write_line(pdf, text: str, height: float = 6.0, font_size: int = 11) -> None:
+    """كتابة سطر في PDF مع دعم العربية."""
     pdf.set_font_size(font_size)
     pdf.set_x(pdf.l_margin)
     try:
@@ -43,6 +47,7 @@ def _write_line(pdf, text: str, height: float = 6.0, font_size: int = 11) -> Non
 
 
 def markdown_to_pdf(md_path: str, pdf_path: str) -> str:
+    """تحويل ملف Markdown إلى PDF."""
     from fpdf import FPDF
 
     with open(md_path, "r", encoding="utf-8") as handle:
@@ -59,6 +64,7 @@ def markdown_to_pdf(md_path: str, pdf_path: str) -> str:
     else:
         pdf.set_font("Helvetica", size=11)
 
+    # معالجة كل سطر من Markdown
     for raw_line in content.splitlines():
         line = raw_line.rstrip()
         if not line.strip():
@@ -92,6 +98,7 @@ def markdown_to_pdf(md_path: str, pdf_path: str) -> str:
 
 
 def main() -> None:
+    """تشغيل التحويل من سطر الأوامر."""
     parser = argparse.ArgumentParser(description="Generate PDF from markdown report")
     parser.add_argument("--input", type=str, default="docs/report.md")
     parser.add_argument("--output", type=str, default="docs/report.pdf")

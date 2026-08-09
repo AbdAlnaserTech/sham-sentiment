@@ -1,3 +1,8 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# إعدادات المشروع — configs/default.yaml
+# ═══════════════════════════════════════════════════════════════════════════
+
+# ── بيانات التدريب والمسارات ───────────────────────────────────────────────
 data:
   synthetic_counts:
     en: 1700
@@ -8,29 +13,7 @@ data:
   sample_path: data/sample_comments.csv
   astd_path: data/real/astd_processed.csv
 
-model:
-  vectorizer:
-    ngram_range: [1, 3]
-    max_features: 20000
-    sublinear_tf: true
-  candidates:
-    - logreg
-    - linear_svm
-  grid_C: [0.5, 1.0, 2.0, 4.0]
-  calibration:
-    method: sigmoid
-    cv: 5
-  labels:
-    - negative
-    - neutral
-    - positive
-
-training:
-  test_size: 0.2
-  random_state: 42
-  cv_folds: 5
-  scoring: f1_macro
-
+# ── إعدادات التحليل (BERT) ───────────────────────────────────────────────────
 inference:
   confidence_threshold: 55.0
   max_text_length: 5000
@@ -39,6 +22,7 @@ inference:
   default_model: bert
   max_batch_size: 2000
 
+# ── منصة: تسجيل دخول، تنبيهات، روابط ───────────────────────────────────────
 platform:
   require_login: true
   negative_alert_threshold: 0.45
@@ -46,6 +30,7 @@ platform:
   github_url: "https://github.com/AbdAlnaserTech/sham-sentiment"
   app_url: "https://sham-sentiment.streamlit.app"
 
+# ── واجهة المستخدم ───────────────────────────────────────────────────────────
 ui:
   default_language: auto
   rtl_languages:
@@ -55,9 +40,6 @@ ui:
   university_name_en: "Sham University"
   department_ar: "قسم الهندسة المعلوماتية"
   logo_path: assets/logo.png
-  author_name_ar: "عبد الناصر حسون"
-  author_name_en: "Abd Al-Nasser Hassoun"
-  author_label: "إعداد وتطوير"
 
 logging:
   level: INFO

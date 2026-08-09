@@ -1,6 +1,6 @@
 # Multilingual Sentiment Analysis — تحليل مشاعر التعليقات
 
-**المطور:** عبد الناصر حسون · **جامعة الشام**
+**جامعة الشام** — مشروع تخرج: تحليل مشاعر التعليقات
 
 ## التشغيل السريع
 
@@ -52,7 +52,7 @@ sentiment_project/
 | ملفات التشغيل الخارجية | `launchers/run_api.py`, `launchers/fetch_comments.py`, `launchers/train.py`, `launchers/evaluate.py`, `launchers/analyze.py` |
 | تجهيز البيانات والنماذج | `launchers/prepare_data.py`, `launchers/generate_dataset.py`, `launchers/expand_validation.py`, `launchers/download_models.py`, `launchers/download_astd.py`, `launchers/finetune_bert.py` |
 | المقارنة والتحسين | `launchers/compare_models.py`, `launchers/compare_algorithms.py`, `commands/improve_accuracy.bat` |
-| أدوات مساعدة | `launchers/init_db.py`, `launchers/augmentation.py`, `launchers/inference.py`, `launchers/preprocessing.py`, `launchers/utils.py`, `launchers/_launch.py` |
+| أدوات مساعدة | `launchers/init_db.py`, `launchers/preprocessing.py`, `launchers/_launch.py` |
 
 ## التنظيم الصحيح للملفات
 

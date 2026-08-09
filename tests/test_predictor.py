@@ -1,35 +1,38 @@
+"""اختبارات BertSentimentPredictor — التحميل والتنبؤ."""
+
 import os
 
 import pytest
 
 from config import load_config
-from models.predictor import SentimentPredictor, load_default_predictor
-from paths import ProjectPaths
-
-
-@pytest.fixture
-def paths():
-    return ProjectPaths.from_project_root()
+from models.bert_predictor import BERT_AVAILABLE, BertNotAvailableError, load_bert_predictor
+from models.registry import load_predictor
 
 
 def test_config_loads_defaults():
+    """تحميل الإعدادات — max_text_length و confidence_threshold."""
     config = load_config()
-    assert config.labels == ["negative", "neutral", "positive"]
     assert config.max_text_length > 0
+    assert config.confidence_threshold > 0
 
 
-def test_predictor_raises_when_model_missing(tmp_path):
-    missing = str(tmp_path / "missing.pkl")
-    with pytest.raises(FileNotFoundError):
-        SentimentPredictor(missing)
+@pytest.mark.skipif(not BERT_AVAILABLE, reason="transformers/torch not installed")
+def test_load_bert_predictor():
+    """تحميل BERT عبر registry."""
+    try:
+        predictor = load_predictor()
+    except BertNotAvailableError:
+        pytest.skip("BERT models not downloaded")
+    assert predictor is not None
 
 
-@pytest.mark.skipif(
-    not os.path.exists(ProjectPaths.from_project_root().model_path),
-    reason="Trained model not available",
-)
-def test_predictor_positive_english():
-    predictor = load_default_predictor()
+@pytest.mark.skipif(not BERT_AVAILABLE, reason="transformers/torch not installed")
+def test_predict_positive_english():
+    """تنبؤ على تعليق إنجليزي."""
+    try:
+        predictor = load_predictor()
+    except BertNotAvailableError:
+        pytest.skip("BERT models not downloaded")
     result = predictor.predict_with_confidence(
         "I genuinely loved the product; it exceeded my expectations.",
         language="en",
@@ -39,11 +42,12 @@ def test_predictor_positive_english():
     assert "distribution" in result
 
 
-@pytest.mark.skipif(
-    not os.path.exists(ProjectPaths.from_project_root().model_path),
-    reason="Trained model not available",
-)
-def test_predictor_rejects_empty_text():
-    predictor = load_default_predictor()
+@pytest.mark.skipif(not BERT_AVAILABLE, reason="transformers/torch not installed")
+def test_predict_rejects_empty_text():
+    """رفض نص فارغ."""
+    try:
+        predictor = load_bert_predictor()
+    except BertNotAvailableError:
+        pytest.skip("BERT models not downloaded")
     with pytest.raises(ValueError):
         predictor.predict_with_confidence("   ")

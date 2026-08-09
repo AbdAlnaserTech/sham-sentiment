@@ -1,3 +1,12 @@
+"""
+رأس وتذييل التطبيق — الشعار، البanner، والحالات الفارغة.
+
+يُستدعى من:
+  - main.py → render_app_header / render_app_footer
+  - shared.py → render_sidebar_brand
+  - تبويب «تعليق واحد» → render_empty_result_panel
+"""
+
 import base64
 import os
 from typing import Any, Dict, Optional
@@ -6,6 +15,7 @@ import streamlit as st
 
 from paths import get_project_root
 
+# ── بلوك 1: مسارات الشعار الاحتياطية ─────────────────────────────────────
 LOGO_CANDIDATES = (
     "assets/logo.png",
     "assets/university_logo.png",
@@ -13,14 +23,12 @@ LOGO_CANDIDATES = (
 )
 
 
-def _author_info(ui_config: Dict[str, Any]) -> tuple[str, str, str]:
-    name_ar = ui_config.get("author_name_ar", "عبد الناصر حسون")
-    name_en = ui_config.get("author_name_en", "Abd Al-Nasser Hassoun")
-    label = ui_config.get("author_label", "إعداد وتطوير")
-    return name_ar, name_en, label
-
-
 def _resolve_logo_path(ui_config: Dict[str, Any]) -> Optional[str]:
+    """
+    يبحث عن ملف الشعار — أولاً من YAML ثم من LOGO_CANDIDATES.
+
+    يرجع المسار الكامل إن وُجد، وإلا None.
+    """
     configured = ui_config.get("logo_path")
     candidates = []
     if configured:
@@ -34,6 +42,11 @@ def _resolve_logo_path(ui_config: Dict[str, Any]) -> Optional[str]:
 
 
 def _load_logo_base64(logo_path: Optional[str]) -> Optional[str]:
+    """
+    يقرأ الشعار ويحوّله إلى data URI لاستخدامه داخل HTML.
+
+    يدعم PNG و SVG.
+    """
     if not logo_path or not os.path.exists(logo_path):
         return None
     with open(logo_path, "rb") as handle:
@@ -43,39 +56,12 @@ def _load_logo_base64(logo_path: Optional[str]) -> Optional[str]:
     return f"data:{mime};base64,{encoded}"
 
 
-def render_author_badge(ui_config: Optional[Dict[str, Any]] = None, compact: bool = False) -> None:
-    ui_config = ui_config or {}
-    name_ar, name_en, label = _author_info(ui_config)
-
-    if compact:
-        st.markdown(
-            f"""
-            <div class="author-badge author-badge-compact">
-                <div>
-                    <div class="author-label">{label}</div>
-                    <div class="author-name">{name_ar}</div>
-                </div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-        return
-
-    st.markdown(
-        f"""
-        <div class="author-badge">
-            <div>
-                <div class="author-label">{label}</div>
-                <div class="author-name">{name_ar}</div>
-                <div class="author-name-en">{name_en}</div>
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-
 def render_sidebar_brand(ui_config: Optional[Dict[str, Any]] = None) -> None:
+    """
+    بطاقة العلامة التجارية في الشريط الجانبي.
+
+    تعرض: الشعار (أو حرف بديل) + اسم الجامعة + عنوان المشروع + القسم.
+    """
     ui_config = ui_config or {}
     uni_ar = ui_config.get("university_name_ar", "جامعة الشام").strip()
     dept = ui_config.get("department_ar", "قسم الهندسة المعلوماتية")
@@ -104,6 +90,9 @@ def render_sidebar_brand(ui_config: Optional[Dict[str, Any]] = None) -> None:
 
 
 def render_app_header(ui_config: Optional[Dict[str, Any]] = None) -> None:
+    """
+    بanner رئيسي أعلى الصفحة — شعار + اسم الجامعة + وصف المشروع.
+    """
     ui_config = ui_config or {}
     uni_ar = ui_config.get("university_name_ar", "جامعة الشام").strip()
     uni_en = ui_config.get("university_name_en", "Sham University")
@@ -136,6 +125,7 @@ def render_app_header(ui_config: Optional[Dict[str, Any]] = None) -> None:
 
 
 def render_empty_result_panel() -> None:
+    """لوحة فارغة في عمود النتيجة قبل أول تحليل."""
     st.markdown(
         """
         <div class="empty-state">
@@ -148,6 +138,7 @@ def render_empty_result_panel() -> None:
 
 
 def render_app_footer(ui_config: Optional[Dict[str, Any]] = None) -> None:
+    """تذييل الصفحة — اسم الجامعة والقسم."""
     ui_config = ui_config or {}
     uni_ar = ui_config.get("university_name_ar", "جامعة الشام").strip()
     dept = ui_config.get("department_ar", "قسم الهندسة المعلوماتية")

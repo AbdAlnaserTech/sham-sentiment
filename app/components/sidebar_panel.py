@@ -1,4 +1,8 @@
-"""Sidebar content for the main application."""
+"""
+محتوى الشريط الجانبي — ملخص الجلسة، اللغة، المظهر، الخروج.
+
+يُستدعى من shared.render_sidebar_settings عبر render_sidebar_extras.
+"""
 
 from __future__ import annotations
 
@@ -10,6 +14,11 @@ from components.auth_panel import current_user
 
 
 def _session_stats(history: List[Dict[str, Any]]) -> Dict[str, int]:
+    """
+    يحسب إحصائيات تحليلات الجلسة الحالية.
+
+    يرجع: total, positive, negative, neutral
+    """
     counts = {"total": len(history), "positive": 0, "negative": 0, "neutral": 0}
     for item in history:
         sentiment = item.get("sentiment", "neutral")
@@ -19,6 +28,11 @@ def _session_stats(history: List[Dict[str, Any]]) -> Dict[str, int]:
 
 
 def render_session_summary() -> None:
+    """
+    يعرض ملخص تحليلات الجلسة في الشريط الجانبي.
+
+    يقرأ من st.session_state["history"] — يُملأ عبر append_history / append_batch_to_history.
+    """
     history: List[Dict[str, Any]] = st.session_state.get("history", [])
     stats = _session_stats(history)
 
@@ -36,10 +50,22 @@ def render_session_summary() -> None:
     st.caption(f"إيجابي {p} · سلبي {n} · محايد {u}")
 
 
-def render_sidebar_extras(ui_config: Dict[str, Any]) -> tuple[bool, str]:
+def render_sidebar_extras(ui_config: Dict[str, Any]) -> tuple[bool, str, bool]:
+    """
+    يبني عناصر الشريط الجانبي (بعد العلامة التجارية).
+
+    Args:
+        ui_config: قسم ui من YAML (غير مستخدم حالياً — محجوز للتوسع)
+
+    المخرجات (tuple):
+      auto_lang   — True = كشف تلقائي
+      lang_choice — en | ar_fusha | ar_shami
+      dark_mode   — الوضع الداكن
+    """
     st.divider()
     render_session_summary()
 
+    # ── إعدادات اللغة ──
     st.divider()
     st.markdown("**اللغة**")
     auto_lang = st.toggle("كشف تلقائي للغة", value=True)
@@ -53,6 +79,7 @@ def render_sidebar_extras(ui_config: Dict[str, Any]) -> tuple[bool, str]:
         )
     st.caption("يدعم: عربي · English · شامي")
 
+    # ── إعدادات المظهر ──
     st.divider()
     st.markdown("**المظهر**")
     dark_mode = st.toggle(
@@ -67,6 +94,7 @@ def render_sidebar_extras(ui_config: Dict[str, Any]) -> tuple[bool, str]:
 
 
 def render_sidebar_account() -> None:
+    """زر تسجيل الخروج — يظهر فقط للمستخدم المسجّل."""
     user = current_user()
     if not user:
         return

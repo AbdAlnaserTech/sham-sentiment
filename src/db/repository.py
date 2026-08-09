@@ -1,4 +1,11 @@
-"""Data access layer for users, batches, items, and alerts."""
+"""
+طبقة الوصول إلى البيانات (Repository) للمستخدمين والدفعات والعناصر والتنبيهات.
+
+الملفات ذات الصلة:
+  - database.py → get_connection, init_database
+  - auth.py     → hash_password, verify_password, public_user
+  - alerts.py   → detect_batch_alerts (يُستدعى قبل save_batch_analysis)
+"""
 
 from __future__ import annotations
 
@@ -11,12 +18,19 @@ from db.database import get_connection, init_database
 from paths import ProjectPaths
 
 
+# ── تهيئة المستخدمين الافتراضيين ──
+
 def ensure_default_users() -> None:
+    """
+    ينشئ حسابات admin / analyst / viewer إن لم تكن موجودة.
+
+    كلمات المرور تُقرأ من متغيرات البيئة أو تُستخدم القيم الافتراضية للتطوير.
+    """
     import os
 
     init_database()
     defaults = [
-        ("admin", os.environ.get("SENTIMENT_ADMIN_PASSWORD", "Admin@2026"), "admin", "عبد الناصر حسون", "Abd Al-Nasser Hassoun"),
+        ("admin", os.environ.get("SENTIMENT_ADMIN_PASSWORD", "Admin@2026"), "admin", "مدير النظام", "Administrator"),
         ("analyst", os.environ.get("SENTIMENT_ANALYST_PASSWORD", "Analyst@2026"), "analyst", "محلل", "Analyst"),
         ("viewer", os.environ.get("SENTIMENT_VIEWER_PASSWORD", "Viewer@2026"), "viewer", "عارض", "Viewer"),
     ]
@@ -36,7 +50,15 @@ def ensure_default_users() -> None:
             )
 
 
+# ── المصادقة وجلب المستخدمين ──
+
 def authenticate(username: str, password: str) -> Optional[Dict[str, Any]]:
+    """
+    يتحقق من اسم المستخدم وكلمة المرور.
+
+    Returns:
+        dict بيانات المستخدم العامة أو None عند الفشل.
+    """
     with get_connection() as conn:
         row = conn.execute(
             "SELECT * FROM users WHERE username = ? AND is_active = 1",
@@ -48,10 +70,13 @@ def authenticate(username: str, password: str) -> Optional[Dict[str, Any]]:
 
 
 def get_user_by_id(user_id: int) -> Optional[Dict[str, Any]]:
+    """يجلب مستخدماً بالمعرّف الداخلي (id) دون كلمة المرور."""
     with get_connection() as conn:
         row = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
         return public_user(dict(row)) if row else None
 
+
+# ── حفظ نتائج التحليل ──
 
 def save_batch_analysis(
     *,
@@ -62,6 +87,14 @@ def save_batch_analysis(
     results: List[Dict[str, Any]],
     alerts: List[Dict[str, Any]] | None = None,
 ) -> int:
+    """
+    يحفظ دفعة تحليل كاملة: ملخص الدفعة + عناصر + تنبيهات مرتبطة.
+
+    يحسب إحصائيات positive/negative/neutral ومتوسط الثقة من النتائج الصالحة.
+
+    Returns:
+        معرّف الدفعة الجديدة (batch_id).
+    """
     valid = [r for r in results if not r.get("error")]
     pos = sum(1 for r in valid if r.get("sentiment") == "positive")
     neg = sum(1 for r in valid if r.get("sentiment") == "negative")
@@ -120,7 +153,15 @@ def save_batch_analysis(
         return batch_id
 
 
+# ── لوحة المعلومات والاستعلامات ──
+
 def fetch_dashboard_stats(limit: int = 12) -> Dict[str, Any]:
+    """
+    يجمع إحصائيات لوحة التحكم: إجماليات، دفعات حديثة، تنبيهات.
+
+    Args:
+        limit: أقصى عدد دفعات في قائمة recent_batches.
+    """
     with get_connection() as conn:
         totals = conn.execute(
             """
@@ -169,6 +210,7 @@ def fetch_dashboard_stats(limit: int = 12) -> Dict[str, Any]:
 
 
 def fetch_batch_items(batch_id: int) -> pd.DataFrame:
+    """يجلب كل عناصر دفعة محددة كـ DataFrame."""
     with get_connection() as conn:
         rows = conn.execute(
             """
@@ -182,6 +224,7 @@ def fetch_batch_items(batch_id: int) -> pd.DataFrame:
 
 
 def list_batches(limit: int = 50) -> List[Dict[str, Any]]:
+    """يعرض قائمة الدفعات المحفوظة مرتبة من الأحدث."""
     with get_connection() as conn:
         rows = conn.execute(
             """

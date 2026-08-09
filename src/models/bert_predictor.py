@@ -1,13 +1,26 @@
+"""
+نموذج BERT / Transformer لتصنيف المشاعر.
+
+ترتيب الاستخدام في predict_with_confidence:
+  1) Fine-tuned محلي (models/bert_finetuned/)
+  2) دمج XLM-RoBERTa + CAMeLBERT للعربي
+  3) XLM-RoBERTa متعدد اللغات
+  4) Twitter-RoBERTa للإنجليزي
+  5) CAMeLBERT للعربي
+"""
+
 import os
 from typing import Any, Dict, List, Optional
 
 from language import detect_language, safe_percent
 from logging_utils import logger
 
+# ── بلوك 1: حالة المكتبات والـ pipelines المخزّنة (singleton) ───────────────
+# كل pipeline يُحمّل مرة واحدة فقط لتجنب بطء إعادة التحميل
 BERT_AVAILABLE = False
-_MULTI_PIPELINE = None
-_EN_PIPELINE = None
-_AR_PIPELINE = None
+_MULTI_PIPELINE = None   # XLM-RoBERTa متعدد اللغات
+_EN_PIPELINE = None      # Twitter-RoBERTa للإنجليزي
+_AR_PIPELINE = None      # CAMeLBERT للعربي
 
 try:
     from transformers import pipeline
@@ -16,15 +29,16 @@ try:
 except ImportError:
     pipeline = None
 
-
+# ── بلوك 2: معرّفات نماذج HuggingFace ───────────────────────────────────────
 EN_MODEL = "cardiffnlp/twitter-roberta-base-sentiment-latest"
 AR_MODEL = "CAMeL-Lab/bert-base-arabic-camelbert-mix-sentiment"
 MULTI_MODEL = "cardiffnlp/twitter-xlm-roberta-base-sentiment"
 
-_FINETUNED_PIPELINE = None
+_FINETUNED_PIPELINE = None  # نموذج fine-tune محلياً في models/bert_finetuned/
 
 
 def _cloud_light_mode() -> bool:
+    """وضع خفيف للسحابة — يعطّل دمج نموذجين للعربي."""
     try:
         from cloud_setup import is_cloud_light_mode
 
@@ -34,6 +48,7 @@ def _cloud_light_mode() -> bool:
 
 
 def _finetuned_model_dir(root_dir: str | None = None) -> str:
+    """مسار مجلد النموذج الم fine-tune محلياً."""
     from paths import ProjectPaths
 
     paths = ProjectPaths.from_project_root(root_dir)
@@ -41,10 +56,11 @@ def _finetuned_model_dir(root_dir: str | None = None) -> str:
 
 
 def _get_finetuned_pipeline(root_dir: str | None = None):
+    """تحميل pipeline من models/bert_finetuned/ (lazy singleton)."""
     global _FINETUNED_PIPELINE
     if _FINETUNED_PIPELINE is None:
         if not BERT_AVAILABLE:
-            raise BertNotAvailableError("Install transformers and torch: pip install -r requirements_bert.txt")
+            raise BertNotAvailableError("Install transformers and torch: pip install -r requirements.txt")
         model_dir = _finetuned_model_dir(root_dir)
         if not os.path.isdir(model_dir) or not os.path.exists(os.path.join(model_dir, "config.json")):
             raise BertNotAvailableError("Fine-tuned model not found. Run: python finetune_bert.py")
@@ -60,6 +76,7 @@ def _get_finetuned_pipeline(root_dir: str | None = None):
 
 
 def finetuned_model_available(root_dir: str | None = None) -> bool:
+    """التحقق من وجود نموذج fine-tuned ومفعّل في config."""
     from config import load_config
 
     try:
@@ -71,6 +88,9 @@ def finetuned_model_available(root_dir: str | None = None) -> bool:
     model_dir = _finetuned_model_dir(root_dir)
     return os.path.isdir(model_dir) and os.path.exists(os.path.join(model_dir, "config.json"))
 
+
+# ── بلوك 3: توحيد تسميات النماذج المختلفة إلى 3 فئات ───────────────────────
+# كل نموذج HuggingFace قد يستخدم pos/neg/neu أو label_0/1/2
 LABEL_NORMALIZE = {
     "positive": "positive",
     "negative": "negative",
@@ -85,15 +105,22 @@ LABEL_NORMALIZE = {
 
 
 class BertNotAvailableError(ImportError):
+    """transformers/torch غير متاح أو النماذج غير منزّلة."""
     pass
 
 
 def _normalize_label(raw: str) -> str:
+    """تحويل تسمية النموذج إلى positive/negative/neutral."""
     key = str(raw).strip().lower().replace(" ", "_")
     return LABEL_NORMALIZE.get(key, key)
 
 
 def _split_pipeline_outputs(outputs: Any, expected_count: int) -> Optional[List[List[Dict[str, Any]]]]:
+    """
+    تقسيم مخرجات pipeline HuggingFace إلى قائمة لكل نص في الدفعة.
+
+    transformers قد يرجع أشكالاً مختلفة حسب batch_size و top_k.
+    """
     if not outputs or expected_count <= 0 or not isinstance(outputs, list):
         return None
 
@@ -121,6 +148,7 @@ def _split_pipeline_outputs(outputs: Any, expected_count: int) -> Optional[List[
 
 
 def _batch_error_item(text: Any, language: str, model_name: str, message: str) -> Dict[str, Any]:
+    """عنصر خطأ موحّد لصف فشل في predict_batch."""
     return {
         "text": text,
         "language": language,
@@ -139,7 +167,11 @@ def _merge_sentiment_scores(
     secondary: List[Dict[str, Any]],
     secondary_weight: float = 0.45,
 ) -> List[Dict[str, Any]]:
-    """Blend two model score lists (e.g. XLM-RoBERTa + CAMeLBERT for Arabic)."""
+    """
+    دمج درجات نموذجين — للعربي: XLM-RoBERTa (55%) + CAMeLBERT (45%).
+
+    يحسّن دقة اللهجات العربية مقارنة بنموذج واحد.
+    """
     weights = {label: 0.0 for label in ["negative", "neutral", "positive"]}
     primary_weight = 1.0 - secondary_weight
     for item in primary:
@@ -155,6 +187,7 @@ def _merge_sentiment_scores(
 
 
 def _model_ready(model_id: str) -> bool:
+    """التحقق من وجود أوزان النموذج محلياً (بدون تنزيل)."""
     try:
         from huggingface_hub import snapshot_download
 
@@ -168,10 +201,11 @@ def _model_ready(model_id: str) -> bool:
 
 
 def _get_multi_pipeline():
+    """تحميل XLM-RoBERTa متعدد اللغات (lazy singleton)."""
     global _MULTI_PIPELINE
     if _MULTI_PIPELINE is None:
         if not BERT_AVAILABLE:
-            raise BertNotAvailableError("Install transformers and torch: pip install -r requirements_bert.txt")
+            raise BertNotAvailableError("Install transformers and torch: pip install -r requirements.txt")
         if not _model_ready(MULTI_MODEL):
             raise BertNotAvailableError(
                 f"Model not downloaded yet. Run: python download_models.py"
@@ -188,10 +222,11 @@ def _get_multi_pipeline():
 
 
 def _get_en_pipeline():
+    """تحميل Twitter-RoBERTa للإنجليزي (lazy singleton)."""
     global _EN_PIPELINE
     if _EN_PIPELINE is None:
         if not BERT_AVAILABLE:
-            raise BertNotAvailableError("Install transformers and torch: pip install -r requirements_bert.txt")
+            raise BertNotAvailableError("Install transformers and torch: pip install -r requirements.txt")
         if not _model_ready(EN_MODEL):
             raise BertNotAvailableError("English model not ready. Run: python download_models.py")
         logger.info("Loading English BERT model: %s", EN_MODEL)
@@ -206,10 +241,11 @@ def _get_en_pipeline():
 
 
 def _get_ar_pipeline():
+    """تحميل CAMeLBERT للعربي (lazy singleton)."""
     global _AR_PIPELINE
     if _AR_PIPELINE is None:
         if not BERT_AVAILABLE:
-            raise BertNotAvailableError("Install transformers and torch: pip install -r requirements_bert.txt")
+            raise BertNotAvailableError("Install transformers and torch: pip install -r requirements.txt")
         if not _model_ready(AR_MODEL):
             raise BertNotAvailableError("Arabic CAMeLBERT not ready. Using multilingual model instead.")
         logger.info("Loading Arabic CAMeLBERT model: %s", AR_MODEL)
@@ -224,12 +260,16 @@ def _get_ar_pipeline():
 
 
 class BertSentimentPredictor:
-    """Transformer-based predictor; prefers fine-tuned model when available."""
+    """
+    مصنّف BERT/Transformer — الواجهة الرئيسية للتحليل.
+
+    neutral_threshold: إذا أعلى score < العتبة → نصنّف neutral (حذر)
+    """
 
     def __init__(self, neutral_threshold: float = 0.58, root_dir: str | None = None) -> None:
         if not BERT_AVAILABLE:
             raise BertNotAvailableError(
-                "BERT dependencies missing. Run: pip install -r requirements_bert.txt"
+                "BERT dependencies missing. Run: pip install -r requirements.txt"
             )
         self.neutral_threshold = neutral_threshold
         self.root_dir = root_dir
@@ -245,6 +285,12 @@ class BertSentimentPredictor:
         language: str,
         scores: List[Dict[str, Any]],
     ) -> Dict[str, Any]:
+        """
+        يحوّل مخرجات pipeline HuggingFace إلى dict موحّد (نفس شكل TF-IDF).
+
+        distribution: نسب مئوية للفئات الثلاث
+        is_reliable: confidence >= عتبة YAML (55%)
+        """
         parsed = []
         for item in scores:
             label = _normalize_label(str(item.get("label", "")))
@@ -263,6 +309,7 @@ class BertSentimentPredictor:
             best_label, best_score = max(parsed, key=lambda x: x[1])
             confidence = safe_percent(best_score * 100.0)
         else:
+            # ── نموذج ثنائي الفئات: عتبة neutral_threshold ──
             best_label, best_score = max(parsed, key=lambda x: x[1])
             if best_score < self.neutral_threshold:
                 best_label = "neutral"
@@ -290,6 +337,7 @@ class BertSentimentPredictor:
         languages: List[Optional[str]],
         auto_language: bool,
     ) -> str:
+        """تحديد لغة صف في الدفعة."""
         lang = languages[index] if index < len(languages) else None
         if lang and not auto_language:
             return lang
@@ -306,6 +354,7 @@ class BertSentimentPredictor:
         results: List[Dict[str, Any]],
         auto_language: bool,
     ) -> None:
+        """تطبيق pipeline على دفعة — مع fallback لتحليل فردي عند الفشل."""
         try:
             outputs = pipe(chunk)
         except Exception as exc:
@@ -319,6 +368,7 @@ class BertSentimentPredictor:
                 results[idx] = self._scores_to_result(str(texts[idx]), lang, scores)
             return
 
+        # ── fallback: تحليل كل نص على حدة ──
         for idx in chunk_indices:
             raw = str(texts[idx] or "").strip()
             lang = self._resolve_batch_language(idx, texts, languages, auto_language)
@@ -343,6 +393,7 @@ class BertSentimentPredictor:
         texts: List[str],
         languages: List[Optional[str]],
     ) -> List[Dict[str, Any]]:
+        """إكمال أي صف فارغ بعنصر خطأ موحّد."""
         finalized: List[Dict[str, Any]] = []
         for index, item in enumerate(results):
             if item.get("sentiment") and item.get("language") is not None:
@@ -363,6 +414,16 @@ class BertSentimentPredictor:
         return finalized
 
     def predict_with_confidence(self, text: str, language: Optional[str] = None) -> Dict[str, Any]:
+        """
+        تحليل تعليق واحد — نقطة الدخول الرئيسية من الواجهة.
+
+        ترتيب اختيار النموذج:
+          1) fine-tuned محلي
+          2) عربي: دمج XLM-RoBERTa + CAMeLBERT
+          3) XLM-RoBERTa متعدد اللغات
+          4) إنجليزي: Twitter-RoBERTa
+          5) عربي: CAMeLBERT وحده
+        """
         if not text or not text.strip():
             raise ValueError("Text must not be empty.")
 
@@ -378,6 +439,7 @@ class BertSentimentPredictor:
                 and _model_ready(MULTI_MODEL)
                 and _model_ready(AR_MODEL)
             ):
+                # ── دمج نموذجين للعربي ──
                 scores_multi = _get_multi_pipeline()(raw)[0]
                 scores_ar = _get_ar_pipeline()(raw)[0]
                 scores = _merge_sentiment_scores(scores_multi, scores_ar, secondary_weight=0.45)
@@ -403,8 +465,14 @@ class BertSentimentPredictor:
         auto_language: bool = True,
         batch_size: int = 16,
     ) -> List[Dict[str, Any]]:
+        """
+        تحليل دفعة — يستخدم fine-tuned أو multi-model حسب التوفر.
+
+        batch_size: عدد النصوص لكل استدعاء pipeline
+        """
         languages = languages or [None] * len(texts)
 
+        # ── مسار 1: fine-tuned ──
         if finetuned_model_available(self.root_dir):
             pipe = _get_finetuned_pipeline(self.root_dir)
             results: List[Dict[str, Any]] = [{} for _ in texts]
@@ -443,6 +511,7 @@ class BertSentimentPredictor:
                 )
             return self._finalize_batch_results(results, texts, languages)
 
+        # ── مسار 2: XLM-RoBERTa متعدد اللغات ──
         if _model_ready(MULTI_MODEL):
             results: List[Dict[str, Any]] = [{} for _ in texts]
             valid_indices: List[int] = []
@@ -481,6 +550,7 @@ class BertSentimentPredictor:
                 )
             return self._finalize_batch_results(results, texts, languages)
 
+        # ── مسار 3: فصل إنجليزي/عربي ──
         results = [{} for _ in texts]
         en_indices: List[int] = []
         en_texts: List[str] = []
@@ -550,6 +620,7 @@ class BertSentimentPredictor:
         language_col: str | None = "language",
         auto_language: bool = True,
     ):
+        """تحليل DataFrame — للسكربتات والتقييم."""
         import pandas as pd
 
         texts = [str(value) for value in df[text_col].tolist()]
@@ -567,4 +638,5 @@ class BertSentimentPredictor:
 
 
 def load_bert_predictor(neutral_threshold: float = 0.58, root_dir: str | None = None) -> BertSentimentPredictor:
+    """مصنع BertSentimentPredictor — يُستدعى من registry.load_predictor."""
     return BertSentimentPredictor(neutral_threshold=neutral_threshold, root_dir=root_dir)

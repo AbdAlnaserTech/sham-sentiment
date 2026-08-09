@@ -1,3 +1,16 @@
+"""
+نتائج التحليل الجماعي — parsing، DataFrame، وعرض Streamlit.
+
+يُستدعى من main.py عند:
+  - تبويب «مجموعة تعليقات»
+  - تبويب «جلب من الإنترنت»
+
+الوظائف الرئيسية:
+  - parse_comments_text / load_comments_from_upload → إدخال التعليقات
+  - run_batch_sentiment_analysis → تحليل على دفعات (chunks)
+  - render_batch_summary / render_batch_results_table → عرض النتائج
+"""
+
 from datetime import datetime, timezone
 from typing import Any, Dict, List
 
@@ -7,6 +20,7 @@ import streamlit as st
 
 from language import SENTIMENT_LABEL_AR, detect_language
 
+# ── بلوك 1: أعمدة DataFrame الداخلية ───────────────────────────────────────
 BATCH_COLUMNS = [
     "text",
     "language",
@@ -19,6 +33,11 @@ BATCH_COLUMNS = [
 
 
 def normalize_batch_result(item: Dict[str, Any], *, fallback_text: str = "") -> Dict[str, Any]:
+    """
+    يوحّد شكل نتيجة واحدة قبل العرض أو الحفظ.
+
+    يضمن وجود: text, language, sentiment, confidence, distribution, error
+    """
     text = str(item.get("text", fallback_text) or fallback_text)
     language = item.get("language")
     if not language:
@@ -41,6 +60,7 @@ def normalize_batch_results(
     results: List[Dict[str, Any]],
     comments: List[str] | None = None,
 ) -> List[Dict[str, Any]]:
+    """يطبّق normalize_batch_result على كل عنصر في القائمة."""
     comments = comments or []
     normalized: List[Dict[str, Any]] = []
     for index, item in enumerate(results):
@@ -50,11 +70,13 @@ def normalize_batch_results(
 
 
 def parse_comments_text(raw: str) -> List[str]:
+    """يحوّل نص multiline إلى قائمة — سطر واحد = تعليق."""
     lines = [line.strip() for line in raw.splitlines()]
     return [line for line in lines if line]
 
 
 def results_to_dataframe(results: List[Dict[str, Any]]) -> pd.DataFrame:
+    """قائمة نتائج → DataFrame مع sentiment_ar للعرض."""
     if not results:
         return pd.DataFrame(columns=BATCH_COLUMNS)
 
@@ -74,6 +96,11 @@ def results_to_dataframe(results: List[Dict[str, Any]]) -> pd.DataFrame:
 
 
 def render_batch_summary(df: pd.DataFrame) -> None:
+    """
+    Metrics + رسم bar لتوزيع المشاعر.
+
+    يتجاهل الصفوف التي تحتوي error عند حساب الإحصائيات.
+    """
     if df.empty:
         return
 
@@ -113,6 +140,11 @@ def render_batch_summary(df: pd.DataFrame) -> None:
 
 
 def append_batch_to_history(results: List[Dict[str, Any]]) -> None:
+    """
+    يضيف نتائج الدفعة لملخص الجلسة في الشريط الجانبي.
+
+    يتخطى العناصر التي فيها error أو sentiment فارغ.
+    """
     now = datetime.now(timezone.utc).isoformat()
     for item in normalize_batch_results(results):
         if item.get("error"):
@@ -131,12 +163,18 @@ def append_batch_to_history(results: List[Dict[str, Any]]) -> None:
 
 
 def load_comments_from_upload(uploaded_file) -> List[str]:
+    """
+    يقرأ CSV ويجب أن يحتوي عمود text.
+
+    يرفع ValueError إن لم يوجد العمود المطلوب.
+    """
     df = pd.read_csv(uploaded_file)
     if "text" not in df.columns:
         raise ValueError("CSV must contain a `text` column.")
     return [str(value).strip() for value in df["text"].tolist() if str(value).strip()]
 
 
+# ── بلوك 2: حجم الدفعة الداخلية — يوازن بين السرعة والذاكرة ───────────────
 BATCH_CHUNK_SIZE = 8
 
 
@@ -149,6 +187,10 @@ def run_batch_sentiment_analysis(
     progress_bar=None,
     status_text=None,
 ) -> tuple[pd.DataFrame, List[Dict[str, Any]]]:
+    """
+    يحلّل قائمة تعليقات على دفعات (chunks).
+    يرجع: (DataFrame للعرض, قائمة raw للحفظ/التصدير)
+    """
     if not comments:
         return results_to_dataframe([]), []
 
@@ -175,6 +217,9 @@ def run_batch_sentiment_analysis(
 
 
 def render_batch_results_table(out_df: pd.DataFrame) -> None:
+    """
+    جدول عربي للنتائج — أعمدة: التعليق، المشاعر، اللغة، اليقين، موثوق، خطأ.
+    """
     if out_df.empty:
         st.caption("لا توجد نتائج للعرض.")
         return

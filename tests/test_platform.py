@@ -1,25 +1,24 @@
-"""Tests for platform database and analytics."""
+"""اختبارات قاعدة البيانات والتحليلات — auth، batches، alerts."""
 
 import gc
 import os
 import tempfile
 
-import pandas as pd
-
 from analytics.alerts import detect_batch_alerts
-from analytics.keywords import extract_keywords_by_sentiment
 from db.auth import hash_password, verify_password
 from db.database import init_database
 from db.repository import authenticate, ensure_default_users, save_batch_analysis
 
 
 def test_password_hash_roundtrip():
+    """تشفير كلمة المرور والتحقق منها."""
     stored = hash_password("secret123")
     assert verify_password("secret123", stored)
     assert not verify_password("wrong", stored)
 
 
 def test_auth_and_save_batch():
+    """تسجيل دخول admin وحفظ دفعة تحليل."""
     with tempfile.TemporaryDirectory() as tmp:
         db_path = os.path.join(tmp, "test.db")
         os.environ["SENTIMENT_DB_PATH"] = db_path
@@ -48,6 +47,7 @@ def test_auth_and_save_batch():
 
 
 def test_alerts_negative_spike():
+    """كشف تنبيه ارتفاع السلبية عند تجاوز العتبة."""
     results = [{"sentiment": "negative", "confidence": 70}] * 6 + [
         {"sentiment": "positive", "confidence": 80}
     ]
@@ -56,6 +56,7 @@ def test_alerts_negative_spike():
 
 
 def test_viewer_cannot_analyze_role():
+    """viewer لا يملك صلاحية التحليل أو الإدارة."""
     from db.auth import user_can_analyze, user_can_admin
 
     assert not user_can_analyze("viewer")
@@ -65,6 +66,7 @@ def test_viewer_cannot_analyze_role():
 
 
 def test_viewer_user_created():
+    """إنشاء مستخدم viewer افتراضي."""
     with tempfile.TemporaryDirectory() as tmp:
         db_path = os.path.join(tmp, "test.db")
         os.environ["SENTIMENT_DB_PATH"] = db_path
@@ -77,13 +79,3 @@ def test_viewer_user_created():
         finally:
             gc.collect()
             os.environ.pop("SENTIMENT_DB_PATH", None)
-
-
-def test_keywords_extraction():
-    df = pd.DataFrame([
-        {"text": "excellent fast delivery", "sentiment": "positive", "language": "en"},
-        {"text": "terrible slow support", "sentiment": "negative", "language": "en"},
-    ])
-    keywords = extract_keywords_by_sentiment(df, top_n=5)
-    assert "positive" in keywords
-    assert len(keywords["positive"]) >= 1

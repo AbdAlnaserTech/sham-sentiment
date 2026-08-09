@@ -1,9 +1,15 @@
-"""Alert detection for negative sentiment spikes and low confidence."""
+"""
+اكتشاف التنبيهات: ارتفاع المشاعر السلبية وانخفاض ثقة النموذج.
+
+يُستدعى بعد تحليل الدفعة وقبل save_batch_analysis في repository.py.
+"""
 
 from __future__ import annotations
 
 from typing import Any, Dict, List
 
+
+# ── كشف تنبيهات الدفعة ──
 
 def detect_batch_alerts(
     results: List[Dict[str, Any]],
@@ -11,6 +17,19 @@ def detect_batch_alerts(
     negative_threshold: float = 0.45,
     low_confidence_threshold: float = 50.0,
 ) -> List[Dict[str, Any]]:
+    """
+    يفحص نتائج الدفعة ويُنشئ قائمة تنبيهات.
+
+    أنواع التنبيهات:
+      - empty_batch      → لا توجد نتائج صالحة
+      - negative_spike   → نسبة سلبية ≥ negative_threshold
+      - low_confidence   → ≥35% من التعليقات بثقة < low_confidence_threshold
+
+    Args:
+        results: قائمة dict لكل تعليق (sentiment, confidence, error).
+        negative_threshold: حد نسبة السلبية (0–1).
+        low_confidence_threshold: حد الثقة المنخفضة (0–100).
+    """
     valid = [r for r in results if not r.get("error")]
     if not valid:
         return [{
@@ -54,30 +73,3 @@ def detect_batch_alerts(
         })
 
     return alerts
-
-
-def predict_trend_label(positive: int, negative: int, neutral: int) -> Dict[str, str]:
-    total = positive + negative + neutral
-    if total == 0:
-        return {"trend": "unknown", "label_ar": "لا توجد بيانات", "recommendation_ar": "—"}
-
-    pos_ratio = positive / total
-    neg_ratio = negative / total
-
-    if pos_ratio >= 0.55 and neg_ratio <= 0.25:
-        return {
-            "trend": "positive",
-            "label_ar": "اتجاه إيجابي",
-            "recommendation_ar": "حافظ على مستوى الخدمة الحالي وراقب التعليقات دورياً.",
-        }
-    if neg_ratio >= 0.45:
-        return {
-            "trend": "negative",
-            "label_ar": "اتجاه سلبي",
-            "recommendation_ar": "يُنصح بمراجعة الشكاوى المتكررة ومعالجة أسبابها بسرعة.",
-        }
-    return {
-        "trend": "mixed",
-        "label_ar": "اتجاه مختلط",
-        "recommendation_ar": "تابع التعليقات المحايدة والسلبية وحدّد المواضيع الأكثر تكراراً.",
-    }

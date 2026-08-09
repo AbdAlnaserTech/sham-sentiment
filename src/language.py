@@ -1,9 +1,18 @@
+"""
+أدوات اللغة — كشف اللغة، تطبيع العربي، وتسميات العرض.
+
+هذا الملف لا يستخدم ML لكشف اللهجة.
+الفصحى vs الشامي: قواعد + قائمة كلمات شامية (SHAMI_HINT_WORDS).
+"""
+
 import re
 
+# ── Regex: هل النص يحتوي أحرفاً عربية؟ ─────────────────────────────────────
 ARABIC_LETTERS_RE = re.compile(
     r"[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]"
 )
 
+# ── كلمات توقف (Stopwords) — تُحذف عند المعالجة المسبقة ─────────────────
 EN_STOPWORDS = {
     "a", "an", "and", "are", "as", "at", "be", "by", "for", "from", "has", "he",
     "in", "is", "it", "its", "of", "on", "that", "the", "to", "was", "were", "will", "with",
@@ -15,11 +24,14 @@ AR_STOPWORDS = {
     "كان", "كانت", "يكون", "تكون", "ب", "و", "ثم",
 }
 
+# ── كلمات دليلية على اللهجة الشامية ─────────────────────────────────────
+# إذا وُجدت أي كلمة من هذه القائمة → ar_shami وإلا → ar_fusha
 SHAMI_HINT_WORDS = {
     "كتير", "كتيرر", "هلق", "لسا", "مو", "منيح", "تمام", "بدي", "بدّي", "شو", "ليش",
     "هيك", "هاد", "هاي", "عم", "رح", "مشان", "يعني",
 }
 
+# ── ترجمة التصنيفات للواجهة العربية ─────────────────────────────────────
 SENTIMENT_LABEL_AR = {
     "positive": "إيجابي",
     "negative": "سلبي",
@@ -34,10 +46,16 @@ LANGUAGE_LABEL_AR = {
 
 
 def is_arabic(text: str) -> bool:
+    """True إذا وُجد حرف عربي واحد على الأقل."""
     return bool(ARABIC_LETTERS_RE.search(text or ""))
 
 
 def normalize_arabic(text: str) -> str:
+    """
+    توحيد شكل الحروف العربية قبل المقارنة أو التحليل.
+    - ألف بأشكالها → ا
+    - إزالة التشكيل والـ tatweel
+    """
     if not text:
         return ""
 
@@ -47,11 +65,19 @@ def normalize_arabic(text: str) -> str:
     text = re.sub(r"ئ", "ي", text)
     text = re.sub(r"ة", "ه", text)
     text = re.sub(r"ـ", "", text)
-    text = re.sub(r"[\u064B-\u0652]", "", text)
+    text = re.sub(r"[\u064B-\u0652]", "", text)  # حركات وتشكيل
     return text
 
 
 def detect_language(text: str) -> str:
+    """
+    كشف اللغة: en | ar_fusha | ar_shami
+
+    1) نص فارغ → en (افتراضي)
+    2) بدون أحرف عربية → en
+    3) عربي + كلمات شامية → ar_shami
+    4) عربي بدونها → ar_fusha
+    """
     if not text:
         return "en"
 
@@ -66,6 +92,7 @@ def detect_language(text: str) -> str:
 
 
 def safe_percent(value: float) -> float:
+    """يضمن أن النسبة بين 0 و 100 (للثقة والتوزيع)."""
     value = float(value)
     if value < 0:
         return 0.0
@@ -75,6 +102,7 @@ def safe_percent(value: float) -> float:
 
 
 def sentiment_color(sentiment: str) -> str:
+    """ألوان الواجهة حسب المشاعر."""
     if sentiment == "positive":
         return "#16a34a"
     if sentiment == "negative":

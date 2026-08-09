@@ -1,9 +1,17 @@
+"""
+عرض نتيجة تحليل «تعليق واحد» — بطاقة HTML ملوّنة.
+
+يُستدعى من تبويب «تعليق واحد» بعد predict_with_confidence.
+يعرض: المشاعر، اللغة، اليقين، شريط التقدم، وموثوقية التصنيف.
+"""
+
 from typing import Any, Dict
 
 import streamlit as st
 
 from language import LANGUAGE_LABEL_AR, SENTIMENT_LABEL_AR, sentiment_color
 
+# ── بلوك: أيقونات المشاعر ─────────────────────────────────────────────────
 SENTIMENT_ICONS = {
     "positive": "😊",
     "negative": "😞",
@@ -12,6 +20,13 @@ SENTIMENT_ICONS = {
 
 
 def render_sentiment_result(result: Dict[str, Any], rtl: bool = False) -> None:
+    """
+    يعرض بطاقة نتيجة التحليل.
+
+    Args:
+        result: dict من predict_with_confidence (sentiment, confidence, language, ...)
+        rtl: True للنصوص العربية — direction=rtl في HTML
+    """
     sentiment = result["sentiment"]
     sentiment_ar = SENTIMENT_LABEL_AR.get(sentiment, sentiment)
     lang_label = LANGUAGE_LABEL_AR.get(result.get("language", ""), result.get("language", ""))

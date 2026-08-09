@@ -1,3 +1,10 @@
+"""
+سحابة الكلمات (WordCloud) — تعليق واحد.
+
+يُستدعى من تبويب «تعليق واحد» بعد التحليل.
+يدعم العربية عبر arabic_reshaper + bidi عند توفر المكتبات.
+"""
+
 import os
 import platform
 
@@ -6,10 +13,17 @@ from wordcloud import WordCloud
 
 from language import is_arabic
 
+# ── بلوك: حد أقصى للكلمات في السحابة ─────────────────────────────────────
 MAX_WORDCLOUD_WORDS = 80
 
 
 def _resolve_font() -> str | None:
+    """
+    يبحث عن خط يدعم العربية حسب نظام التشغيل.
+
+    Windows → arial/tahoma/segoeui
+    Linux → DejaVu / Noto Sans Arabic
+    """
     candidates = []
     if platform.system() == "Windows":
         windir = os.environ.get("WINDIR", r"C:\Windows")
@@ -28,6 +42,11 @@ def _resolve_font() -> str | None:
 
 
 def render_wordcloud(text: str) -> None:
+    """
+    يولّد ويعرض سحابة كلمات من النص المُنظَّف.
+
+    يتخطى النصوص القصيرة (< 3 كلمات) برسالة توضيحية.
+    """
     if not (text or "").strip():
         st.caption("لا يوجد نص لعرض سحابة الكلمات.")
         return
@@ -41,6 +60,7 @@ def render_wordcloud(text: str) -> None:
         text_for_wc = text
         font_path = _resolve_font() if is_arabic(text) else None
 
+        # ── معالجة RTL للعربية ──
         if is_arabic(text):
             try:
                 import arabic_reshaper

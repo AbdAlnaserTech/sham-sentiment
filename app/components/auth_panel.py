@@ -1,4 +1,11 @@
-"""Simple login panel for Streamlit."""
+"""
+لوحة تسجيل الدخول والصلاحيات — Streamlit.
+
+يُتحكم في:
+  - حالة auth_user في session_state
+  - أدوار admin / analyst / viewer
+  - نموذج الدخول وقائمة المستخدم في الشريط الجانبي
+"""
 
 from __future__ import annotations
 
@@ -11,29 +18,48 @@ from db.repository import authenticate, ensure_default_users
 
 
 def init_auth_state() -> None:
+    """
+    يهيّئ حالة المصادقة عند أول تحميل.
+
+    - ensure_default_users → إنشاء حسابات افتراضية إن لم تكن موجودة
+    - auth_user = None حتى يسجّل المستخدم الدخول
+    """
     ensure_default_users()
     if "auth_user" not in st.session_state:
         st.session_state["auth_user"] = None
 
 
 def current_user() -> Optional[Dict[str, Any]]:
+    """يرجع dict المستخدم الحالي أو None إن لم يكن مسجّل الدخول."""
     return st.session_state.get("auth_user")
 
 
 def is_logged_in() -> bool:
+    """True إذا كان auth_user موجوداً في session_state."""
     return current_user() is not None
 
 
 def can_analyze() -> bool:
+    """
+    هل يمكن للمستخدم الحالي تشغيل التحليل؟
+
+    viewer → False | analyst/admin → True
+    """
     user = current_user()
     return bool(user and user_can_analyze(user["role"]))
 
 
 def can_admin() -> bool:
+    """
+    هل يمكن للمستخدم الحالي إدارة البيانات (حذف دفعات)؟
+
+    admin فقط → True
+    """
     user = current_user()
     return bool(user and user_can_admin(user["role"]))
 
 
+# ── بلوك: تسميات الأدوار للعرض العربي ────────────────────────────────────
 ROLE_LABELS_AR = {
     "admin": "مدير النظام",
     "analyst": "محلل",
@@ -42,7 +68,13 @@ ROLE_LABELS_AR = {
 
 
 def render_login_form() -> bool:
-    """Return True when user is authenticated."""
+    """
+    يعرض نموذج تسجيل الدخول.
+
+    المخرجات:
+      True  → المستخدم مصادق (أو كان مسجّلاً مسبقاً)
+      False → لم ينجح الدخول بعد — main.py يوقف التطبيق
+    """
     init_auth_state()
     if is_logged_in():
         return True
@@ -63,18 +95,21 @@ def render_login_form() -> bool:
         else:
             st.error("بيانات الدخول غير صحيحة.")
 
+    # ── روابط GitHub والتطبيق من YAML (اختياري) ──
     try:
         from config import load_config
 
-        platform = load_config().platform
+        cfg = load_config()
+        platform = cfg.platform
         github = platform.get("github_url", "")
         app_url = platform.get("app_url", "")
-        if github or app_url:
-            links = []
-            if github:
-                links.append(f"[GitHub]({github})")
-            if app_url:
-                links.append(f"[التطبيق]({app_url})")
+
+        links = []
+        if github:
+            links.append(f"[GitHub]({github})")
+        if app_url:
+            links.append(f"[التطبيق]({app_url})")
+        if links:
             st.caption(" · ".join(links))
     except Exception:
         pass
@@ -83,6 +118,11 @@ def render_login_form() -> bool:
 
 
 def render_user_menu() -> None:
+    """
+    قائمة المستخدم في الشريط الجانبي — الاسم، الدور، زر الخروج.
+
+    (غير مستخدمة حالياً في main — الخروج من sidebar_panel)
+    """
     user = current_user()
     if not user:
         return

@@ -1,3 +1,5 @@
+"""اختبارات تطبيع نتائج الدفعة — normalize_batch_result و results_to_dataframe."""
+
 import sys
 from pathlib import Path
 
@@ -8,6 +10,7 @@ from components.batch_results import normalize_batch_result, normalize_batch_res
 
 
 def test_normalize_batch_result_fills_missing_language():
+    """ملء حقل language تلقائياً عند غيابه."""
     item = {"text": "الخدمة ممتازة", "sentiment": "positive", "confidence": 90.0}
     normalized = normalize_batch_result(item)
     assert normalized["language"]
@@ -15,12 +18,14 @@ def test_normalize_batch_result_fills_missing_language():
 
 
 def test_results_to_dataframe_empty_has_columns():
+    """DataFrame فارغ يحتوي على أعمدة language و sentiment."""
     df = results_to_dataframe([])
     assert "language" in df.columns
     assert "sentiment" in df.columns
 
 
 def test_normalize_batch_results_preserves_count():
+    """الحفاظ على عدد النتائج مع تطبيع كل عنصر."""
     raw = [{"text": "hello"}, {"text": "world", "sentiment": "positive", "language": "en"}]
     normalized = normalize_batch_results(raw, ["hello", "world"])
     assert len(normalized) == 2

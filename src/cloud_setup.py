@@ -1,4 +1,4 @@
-"""Bootstrap helpers for Streamlit Community Cloud (free tier)."""
+"""مساعدات تهيئة Streamlit Community Cloud (الطبقة المجانية)."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ import os
 
 
 def _apply_streamlit_secrets() -> None:
-    """Map Streamlit Cloud secrets into environment variables."""
+    """نقل أسرار Streamlit Cloud إلى متغيرات البيئة."""
     try:
         import streamlit as st
 
@@ -23,7 +23,7 @@ def _apply_streamlit_secrets() -> None:
 
 
 def is_cloud_runtime() -> bool:
-    """True when running on Streamlit Cloud or SENTIMENT_CLOUD is set."""
+    """True عند التشغيل على Streamlit Cloud أو عند تعيين SENTIMENT_CLOUD."""
     runtime = os.environ.get("STREAMLIT_RUNTIME_ENVIRONMENT", "").strip().lower()
     if runtime in {"cloud", "streamlit_cloud"}:
         return True
@@ -32,7 +32,7 @@ def is_cloud_runtime() -> bool:
 
 
 def is_cloud_light_mode() -> bool:
-    """Use a single BERT model (no ensemble) to fit ~1 GB RAM."""
+    """استخدام نموذج BERT واحد (بدون ensemble) لملاءمة ~1 GB RAM."""
     if not is_cloud_runtime():
         return False
     flag = os.environ.get("SENTIMENT_CLOUD_LIGHT", "1").strip().lower()
@@ -40,16 +40,18 @@ def is_cloud_light_mode() -> bool:
 
 
 def bootstrap_cloud(db_path: str | None = None) -> None:
-    """Initialize DB and cloud flags once per process."""
+    """تهيئة قاعدة البيانات وإعدادات السحابة مرة واحدة لكل عملية."""
     _apply_streamlit_secrets()
 
     if not is_cloud_runtime():
         return
 
+    # تعيين القيم الافتراضية لبيئة السحابة
     os.environ.setdefault("SENTIMENT_CLOUD", "1")
     os.environ.setdefault("SENTIMENT_CLOUD_LIGHT", "1")
     os.environ.setdefault("SENTIMENT_MAX_BATCH", "100")
 
+    # تجنب إعادة التهيئة في نفس العملية
     if os.environ.get("SENTIMENT_DB_READY") == "1":
         return
 
@@ -62,6 +64,7 @@ def bootstrap_cloud(db_path: str | None = None) -> None:
 
 
 def cloud_max_batch_size(default: int = 2000) -> int:
+    """إرجاع الحد الأقصى لحجم الدفعة في السحابة أو القيمة الافتراضية محلياً."""
     if not is_cloud_runtime():
         return default
     try:

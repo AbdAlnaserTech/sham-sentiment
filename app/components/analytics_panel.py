@@ -1,4 +1,14 @@
-"""Keywords, topics, and export actions for batch results."""
+"""
+تحليلات إضافية وحفظ النتائج — تعليق واحد أو دفعة.
+
+يُستدعى من main.py بعد عرض النتائج:
+  - render_single_comment_save → تبويب «تعليق واحد»
+  - render_batch_analytics → تبويب «مجموعة» و«جلب من الإنترنت»
+
+الوظائف:
+  - تصدير Excel / PDF
+  - حفظ الدفعة في SQLite مع تنبيهات
+"""
 
 from __future__ import annotations
 
@@ -11,6 +21,7 @@ from analytics.alerts import detect_batch_alerts
 from db.repository import save_batch_analysis
 from reports.export import export_excel_bytes, export_pdf_bytes
 
+# ── بلوك 1: تسميات المصدر للعرض العربي ───────────────────────────────────
 _SOURCE_LABELS = {
     "manual": "يدوي",
     "single": "تعليق واحد",
@@ -21,6 +32,7 @@ _SOURCE_LABELS = {
 
 
 def _format_source_label(source: str) -> str:
+    """يحوّل مفتاح المصدر الداخلي (مثل live:youtube) إلى تسمية عربية."""
     if source in _SOURCE_LABELS:
         return _SOURCE_LABELS[source]
     if source.startswith("live:"):
@@ -37,6 +49,11 @@ def _persist_batch_save(
     title: str,
     button_key: str,
 ) -> None:
+    """
+    زر «حفظ في قاعدة البيانات» + رسالة نجاح من session_state.
+
+    يكتشف التنبيهات (alerts) قبل الحفظ ويربطها بالدفعة.
+    """
     save_msg = st.session_state.get("batch_save_msg")
     if save_msg:
         st.success(save_msg)
@@ -62,6 +79,11 @@ def render_single_comment_save(
     user_id: Optional[int],
     model_kind: str,
 ) -> None:
+    """
+    حفظ نتيجة «تعليق واحد» في DB كدفعة مصدرها single.
+
+    يُغلّف النتيجة في قائمة من عنصر واحد لتوافق save_batch_analysis.
+    """
     payload = [{**result, "text": comment}]
     _persist_batch_save(
         raw_results=payload,
@@ -83,6 +105,12 @@ def render_batch_analytics(
     title: str = "تحليل مجموعة",
     save_button_key: str = "save_batch_analytics_db",
 ) -> None:
+    """
+    بلوك التصدير والحفظ بعد التحليل الجماعي.
+
+    الأعمدة الثلاثة:
+      Excel | PDF | حفظ في DB
+    """
     if out_df.empty:
         return
 

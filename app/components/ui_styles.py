@@ -1,11 +1,20 @@
+"""
+أنماط CSS العامة للتطبيق — فاتح، داكن، RTL.
+
+يُستدعى من main.py بعد render_sidebar_settings:
+  apply_app_styles(rtl_mode, dark_mode)
+"""
+
 import streamlit as st
 
+# ── بلوك 1: ألوان المشاعر (مرجع للمكوّنات الأخرى) ─────────────────────────
 SENTIMENT_COLORS = {
     "positive": "#059669",
     "negative": "#dc2626",
     "neutral": "#d97706",
 }
 
+# ── بلوك 2: CSS الأساسي — hero، sidebar، بطاقات، أزرار ───────────────────
 BASE_CSS = """
 <style>
 :root {
@@ -109,21 +118,6 @@ footer { visibility: hidden; }
     color: #cbd5e1;
 }
 
-.author-badge {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    background: var(--primary-light);
-    border: 1px solid var(--border);
-    border-right: 3px solid var(--primary);
-    border-radius: 8px;
-    padding: 12px 14px;
-    margin-bottom: 1rem;
-}
-.author-badge-compact {
-    padding: 10px 12px;
-    margin-bottom: 0.75rem;
-}
 .sidebar-brand {
     display: flex;
     align-items: center;
@@ -170,27 +164,6 @@ footer { visibility: hidden; }
     color: #64748b;
     line-height: 1.3;
 }
-.author-icon {
-    font-size: 1.6rem;
-    line-height: 1;
-}
-.author-label {
-    font-size: 0.72rem;
-    color: #64748b;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.02em;
-}
-.author-name {
-    font-size: 1rem;
-    font-weight: 700;
-    color: #1e293b;
-}
-.author-name-en {
-    font-size: 0.78rem;
-    color: #64748b;
-}
-
 .section-card {
     background: var(--surface);
     border: 1px solid var(--border);
@@ -297,6 +270,7 @@ div[data-testid="stMetric"] {
 </style>
 """
 
+# ── بلوك 3: CSS الوضع الداكن ───────────────────────────────────────────────
 DARK_CSS = """
 <style>
 .stApp {
@@ -334,13 +308,6 @@ h1, h2, h3, h4, h5, h6, p, label, span {
     background: linear-gradient(135deg, #312e81 0%, #4c1d95 50%, #1e3a8a 100%) !important;
 }
 
-.author-badge, .author-badge-compact {
-    background: linear-gradient(135deg, #1e293b, #312e81) !important;
-    border-color: #4338ca !important;
-}
-.author-name { color: #f1f5f9 !important; }
-.author-label, .author-name-en { color: #94a3b8 !important; }
-
 div[data-testid="stSidebar"] {
     background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%) !important;
 }
@@ -375,6 +342,7 @@ div[data-testid="stSidebar"] {
 </style>
 """
 
+# ── بلوك 4: CSS اتجاه RTL للعربية ─────────────────────────────────────────
 RTL_CSS = """
 <style>
 .main .block-container {
@@ -399,6 +367,13 @@ RTL_CSS = """
 
 
 def apply_app_styles(rtl_mode: bool = True, dark_mode: bool = False) -> None:
+    """
+    يحقن CSS في الصفحة حسب إعدادات المستخدم.
+
+    Args:
+        rtl_mode: True → RTL_CSS (افتراضي للعربية)
+        dark_mode: True → DARK_CSS فوق BASE_CSS
+    """
     st.markdown(BASE_CSS, unsafe_allow_html=True)
     if dark_mode:
         st.markdown(DARK_CSS, unsafe_allow_html=True)

@@ -1,3 +1,10 @@
+"""
+رسوم بيانية Plotly — توزيع احتمالات المشاعر.
+
+يُستدعى من تبويب «تعليق واحد» لعرض distribution
+(إيجابي / محايد / سلبي) كمخطط دائري (donut).
+"""
+
 from typing import Dict
 
 import pandas as pd
@@ -6,6 +13,7 @@ import streamlit as st
 
 from language import SENTIMENT_LABEL_AR
 
+# ── بلوك: ألوان المشاعر الموحّدة في الواجهة ─────────────────────────────
 SENTIMENT_COLOR_MAP = {
     "positive": "#059669",
     "negative": "#dc2626",
@@ -14,6 +22,12 @@ SENTIMENT_COLOR_MAP = {
 
 
 def render_distribution_pie(distribution: Dict[str, float]) -> None:
+    """
+    رسم دائري (donut) لنسب التصنيف الثلاثة.
+
+    المدخلات:
+      distribution → {"positive": 0.7, "neutral": 0.2, "negative": 0.1}
+    """
     keys = list(distribution.keys())
     labels = [f"{SENTIMENT_LABEL_AR.get(key, key)}" for key in keys]
     df = pd.DataFrame({"sentiment": labels, "probability": list(distribution.values()), "key": keys})

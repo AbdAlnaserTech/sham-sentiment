@@ -1,3 +1,3 @@
-"""Multilingual sentiment analysis core package."""
+"""حزمة نواة تحليل المشاعر متعددة اللغات."""
 
 __version__ = "2.0.0"

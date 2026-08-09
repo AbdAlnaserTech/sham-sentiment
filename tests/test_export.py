@@ -1,3 +1,5 @@
+"""اختبارات تصدير PDF و Excel — export_excel_bytes و export_pdf_bytes."""
+
 import sys
 from pathlib import Path
 
@@ -10,6 +12,7 @@ from reports.export import export_excel_bytes, export_pdf_bytes
 
 
 def test_export_excel_bytes():
+    """تصدير DataFrame إلى Excel وإرجاع bytes."""
     df = pd.DataFrame([{"text": "hello", "sentiment": "positive"}])
     data = export_excel_bytes(df)
     assert isinstance(data, bytes)
@@ -17,6 +20,7 @@ def test_export_excel_bytes():
 
 
 def test_export_pdf_bytes_arabic_and_english():
+    """تصدير PDF يدعم العربية والإنجليزية ويبدأ بـ %PDF."""
     df = pd.DataFrame([
         {"text": "الخدمة كتير منيح", "sentiment": "positive", "language": "ar_shami", "confidence": 88.0},
         {"text": "Great product", "sentiment": "positive", "language": "en", "confidence": 90.0},

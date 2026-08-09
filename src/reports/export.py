@@ -1,4 +1,8 @@
-"""Export analysis results to PDF and Excel."""
+"""
+تصدير نتائج التحليل إلى Excel و PDF.
+
+يدعم العربية في PDF عبر arabic_reshaper + bidi وخطوط Unicode.
+"""
 
 from __future__ import annotations
 
@@ -13,14 +17,26 @@ import pandas as pd
 from paths import get_project_root
 
 
+# ── تصدير Excel ──
+
 def export_excel_bytes(df: pd.DataFrame, sheet_name: str = "Results") -> bytes:
+    """
+    يُحوّل DataFrame إلى ملف Excel في الذاكرة (bytes).
+
+    Args:
+        df: جدول النتائج.
+        sheet_name: اسم الورقة (حد Excel 31 حرفاً).
+    """
     buffer = io.BytesIO()
     with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
         df.to_excel(writer, index=False, sheet_name=sheet_name[:31])
     return buffer.getvalue()
 
 
+# ── دعم العربية في PDF ──
+
 def _reshape_arabic(text: str) -> str:
+    """يعيد تشكيل النص العربي وعكس اتجاهه للعرض الصحيح في PDF."""
     try:
         import arabic_reshaper
         from bidi.algorithm import get_display
@@ -33,6 +49,12 @@ def _reshape_arabic(text: str) -> str:
 
 
 def _find_unicode_font() -> str | None:
+    """
+    يبحث عن خط يدعم Unicode/العربية (Noto, Arial, Tahoma, DejaVu).
+
+    Returns:
+        مسار الخط أو None إن لم يُوجَد.
+    """
     root = get_project_root()
     windir = os.environ.get("WINDIR", r"C:\Windows")
     candidates = [
@@ -50,6 +72,7 @@ def _find_unicode_font() -> str | None:
 
 
 def _pdf_safe_text(text: Any, *, max_len: int = 120) -> str:
+    """ينظّف النص للطباعة في PDF مع اقتطاع الطول ودعم العربية."""
     value = str(text or "").replace("\t", " ").replace("\n", " ").strip()
     if len(value) > max_len:
         value = value[: max_len - 3] + "..."
@@ -57,6 +80,13 @@ def _pdf_safe_text(text: Any, *, max_len: int = 120) -> str:
 
 
 def _write_pdf_line(pdf, text: str, *, height: float = 6.0, font_size: int = 10) -> None:
+    """
+    يكتب سطراً في PDF مع fallback إلى ASCII عند فشل multi_cell.
+
+    Args:
+        pdf: كائن FPDF.
+        text: النص بعد _pdf_safe_text.
+    """
     pdf.set_font_size(font_size)
     pdf.set_x(pdf.l_margin)
     try:
@@ -67,12 +97,25 @@ def _write_pdf_line(pdf, text: str, *, height: float = 6.0, font_size: int = 10)
         pdf.multi_cell(pdf.epw, height, ascii_text or "-")
 
 
+# ── تصدير PDF ──
+
 def export_pdf_bytes(
     df: pd.DataFrame,
     *,
     title: str = "Sentiment Analysis Report",
     meta: Optional[Dict[str, Any]] = None,
 ) -> bytes:
+    """
+    يُنشئ تقرير PDF مختصر من DataFrame (حتى 200 صف، 6 أعمدة).
+
+    Args:
+        df: جدول النتائج.
+        title: عنوان التقرير.
+        meta: بيانات وصفية إضافية (model, source, ...).
+
+    Returns:
+        محتوى PDF كـ bytes للتنزيل أو الإرسال.
+    """
     from fpdf import FPDF
 
     meta = meta or {}

@@ -1,13 +1,23 @@
+"""
+مسارات المشروع — data/, models/, db, configs.
+
+ProjectPaths: كل المسارات المهمة كـ properties.
+"""
+
 import os
 from dataclasses import dataclass
 
 
+# ── بلوك 1: جذر المشروع ──────────────────────────────────────────────────────
 def get_project_root() -> str:
+    """جذر المشروع (مجلد sentiment_project/)."""
     return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
+# ── بلوك 2: مسارات ثابتة للمشروع ─────────────────────────────────────────────
 @dataclass(frozen=True)
 class ProjectPaths:
+    """مسارات ثابتة — تُنشأ مرة من root_dir."""
     root_dir: str
 
     @classmethod
@@ -35,18 +45,18 @@ class ProjectPaths:
         return os.path.join(self.root_dir, "configs")
 
     @property
-    def model_path(self) -> str:
-        return os.path.join(self.models_dir, "sentiment_model.pkl")
-
-    @property
-    def metadata_path(self) -> str:
-        return os.path.join(self.models_dir, "model_metadata.json")
+    def bert_finetuned_dir(self) -> str:
+        """مجلد BERT بعد fine-tune."""
+        return os.path.join(self.models_dir, "bert_finetuned")
 
     @property
     def db_path(self) -> str:
+        """SQLite — sentiment_platform.db"""
         return os.path.join(self.data_dir, "sentiment_platform.db")
 
 
+# ── بلوك 3: إنشاء مجلدات ─────────────────────────────────────────────────────
 def ensure_dirs(*dirs: str) -> None:
+    """ينشئ مجلدات إن لم تكن موجودة."""
     for directory in dirs:
         os.makedirs(directory, exist_ok=True)
