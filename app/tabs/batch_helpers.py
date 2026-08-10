@@ -82,4 +82,11 @@ def execute_batch_analysis(
     except FileNotFoundError:
         st.error("تعذّر تشغيل النظام. أعد تشغيل التطبيق أو تواصل مع المسؤول.")
     except Exception as exc:
-        st.error(f"حدث خطأ أثناء تحليل الدفعة: {exc}")
+        message = str(exc)
+        if "BERT" in message or "transformers" in message or "torch" in message.lower():
+            st.error(
+                "تعذّر تحميل نموذج BERT. على Streamlit Cloud انتظر دقيقة ثم أعد المحاولة "
+                "(أول تحليل يحمّل النموذج من HuggingFace)."
+            )
+        else:
+            st.error(f"حدث خطأ أثناء تحليل الدفعة: {exc}")
