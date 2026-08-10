@@ -94,17 +94,9 @@ def _pipeline_for_language(lang: str):
     """
     اختيار pipeline حسب اللغة.
 
-    على السحابة: نماذج أصغر (EN/AR) بدل XLM-RoBERTa الثقيل.
+    على السحابة: نموذج إنجليزي واحد فقط (أسرع تنزيلاً وأخف ذاكرة).
     """
     if _cloud_light_mode():
-        if lang == "en":
-            return _get_en_pipeline()
-        if lang in {"ar_fusha", "ar_shami"}:
-            try:
-                return _get_ar_pipeline()
-            except Exception as exc:
-                logger.warning("Arabic model unavailable on cloud, falling back to English: %s", exc)
-                return _get_en_pipeline()
         return _get_en_pipeline()
 
     return _get_multi_pipeline()
@@ -129,8 +121,14 @@ def _run_inference(raw: str, lang: str, root_dir: str | None = None) -> List[Dic
 
 
 def warmup_bert_model(root_dir: str | None = None) -> None:
-    """تحميل مسبق على السحابة — يظهر الخطأ مبكراً بدل انهيار الواجهة."""
-    _run_inference("test", "en", root_dir)
+    """تحميل أوزان BERT مسبقاً — يُستدعى عند فتح التطبيق على السحابة."""
+    if finetuned_model_available(root_dir):
+        _get_finetuned_pipeline(root_dir)("test")
+        return
+    if _cloud_light_mode():
+        _get_en_pipeline()("test")
+        return
+    _get_multi_pipeline()("test")
 
 
 def _finetuned_model_dir(root_dir: str | None = None) -> str:
@@ -558,20 +556,18 @@ class BertSentimentPredictor:
                 )
             return self._finalize_batch_results(results, texts, languages)
 
-        # ── مسار 2: السحابة — نماذج EN/AR أصغر (تجنّب XLM-RoBERTa الثقيل) ──
+        # ── مسار 2: السحابة — نموذج EN واحد لكل التعليقات (سريع) ──
         if _cloud_light_mode():
-            results = [{} for _ in texts]
-            en_indices: List[int] = []
-            en_texts: List[str] = []
-            ar_indices: List[int] = []
-            ar_texts: List[str] = []
+            results: List[Dict[str, Any]] = [{} for _ in texts]
+            valid_indices: List[int] = []
+            valid_texts: List[str] = []
 
-            for index, (text, lang) in enumerate(zip(texts, languages)):
+            for index, text in enumerate(texts):
                 raw = str(text or "").strip()
                 if not raw:
                     results[index] = {
                         "text": text,
-                        "language": lang or "en",
+                        "language": languages[index] or "en",
                         "cleaned_text": "",
                         "sentiment": "neutral",
                         "confidence": 0.0,
@@ -580,43 +576,18 @@ class BertSentimentPredictor:
                         "error": "Empty comment",
                         "model": self.model_name,
                     }
-                    continue
-
-                resolved = lang if lang and not auto_language else (lang or detect_language(raw))
-                if resolved == "en":
-                    en_indices.append(index)
-                    en_texts.append(raw)
                 else:
-                    ar_indices.append(index)
-                    ar_texts.append(raw)
+                    valid_indices.append(index)
+                    valid_texts.append(raw)
 
-            if en_texts:
+            if valid_texts:
                 try:
-                    en_pipe = _get_en_pipeline()
-                    for start in range(0, len(en_texts), batch_size):
-                        chunk = en_texts[start:start + batch_size]
-                        chunk_indices = en_indices[start:start + batch_size]
+                    pipe = _get_en_pipeline()
+                    for start in range(0, len(valid_texts), batch_size):
+                        chunk = valid_texts[start:start + batch_size]
+                        chunk_indices = valid_indices[start:start + batch_size]
                         self._apply_batch_chunk(
-                            en_pipe,
-                            texts,
-                            languages,
-                            chunk_indices,
-                            chunk,
-                            results,
-                            auto_language=False,
-                        )
-                except BertNotAvailableError as exc:
-                    logger.warning("English batch path failed: %s", exc)
-
-            if ar_texts:
-                _release_pipelines()
-                try:
-                    ar_pipe = _get_ar_pipeline()
-                    for start in range(0, len(ar_texts), batch_size):
-                        chunk = ar_texts[start:start + batch_size]
-                        chunk_indices = ar_indices[start:start + batch_size]
-                        self._apply_batch_chunk(
-                            ar_pipe,
+                            pipe,
                             texts,
                             languages,
                             chunk_indices,
@@ -625,24 +596,7 @@ class BertSentimentPredictor:
                             auto_language,
                         )
                 except BertNotAvailableError as exc:
-                    logger.warning("Arabic batch path failed: %s", exc)
-                    _release_pipelines()
-                    try:
-                        en_pipe = _get_en_pipeline()
-                        for start in range(0, len(ar_texts), batch_size):
-                            chunk = ar_texts[start:start + batch_size]
-                            chunk_indices = ar_indices[start:start + batch_size]
-                            self._apply_batch_chunk(
-                                en_pipe,
-                                texts,
-                                languages,
-                                chunk_indices,
-                                chunk,
-                                results,
-                                auto_language,
-                            )
-                    except BertNotAvailableError:
-                        pass
+                    logger.warning("Cloud batch path failed: %s", exc)
 
             return self._finalize_batch_results(results, texts, languages)
 

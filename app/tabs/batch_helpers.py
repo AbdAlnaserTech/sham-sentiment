@@ -61,6 +61,9 @@ def execute_batch_analysis(
         st.warning("أدخل تعليقاً واحداً على الأقل.")
         return
     try:
+        if not st.session_state.get("bert_ready"):
+            st.warning("انتظر حتى يكتمل تحميل النموذج أعلى الصفحة.")
+            return
         predictor = get_predictor()
         progress = st.progress(0, text=f"جاري تحليل {len(comments)} تعليق...")
         status = st.empty()

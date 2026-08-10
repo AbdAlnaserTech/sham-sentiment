@@ -13,6 +13,7 @@ from components.sentiment_display import render_sentiment_result
 from components.wordcloud import render_wordcloud
 from language import is_arabic
 from models.bert_predictor import BertNotAvailableError
+from cloud_setup import is_cloud_runtime
 from shared import MODEL_KIND, append_history, get_predictor, resolve_language
 
 
@@ -38,25 +39,26 @@ def render_single_tab(*, auto_lang: bool, lang_choice: str) -> None:
                 st.warning("الرجاء إدخال تعليق.")
             else:
                 try:
-                    with st.spinner("جاري التحليل..."):
-                        lang = resolve_language(comment, auto_lang, lang_choice)
-                        result = get_predictor().predict_with_confidence(comment, language=lang)
-                    st.session_state["last_result"] = result
-                    st.session_state["last_comment"] = comment
-                    append_history(result)
+                    if not st.session_state.get("bert_ready") and is_cloud_runtime():
+                        st.warning("انتظر حتى يظهر «النموذج جاهز» أعلى الصفحة ثم حاول مجدداً.")
+                    else:
+                        with st.spinner("جاري التحليل..."):
+                            lang = resolve_language(comment, auto_lang, lang_choice)
+                            result = get_predictor().predict_with_confidence(comment, language=lang)
+                        st.session_state["last_result"] = result
+                        st.session_state["last_comment"] = comment
+                        append_history(result)
                 except FileNotFoundError:
                     st.error("تعذّر تشغيل النظام. أعد تشغيل التطبيق أو تواصل مع المسؤول.")
                 except ValueError as exc:
                     st.error(str(exc))
+                except BertNotAvailableError:
+                    st.error(
+                        "تعذّر تحميل نموذج BERT على السحابة. "
+                        "انتظر 1–2 دقيقة (تحميل أول مرة) ثم اضغط «تحليل التعليق» مجدداً."
+                    )
                 except Exception as exc:
-                    name = exc.__class__.__name__
-                    if "BertNotAvailable" in name:
-                        st.error(
-                            "تعذّر تحميل نموذج BERT على السحابة. "
-                            "انتظر 1–2 دقيقة (تحميل أول مرة) ثم اضغط «تحليل التعليق» مجدداً."
-                        )
-                    else:
-                        st.error(f"حدث خطأ أثناء التحليل: {exc}")
+                    st.error(f"حدث خطأ أثناء التحليل: {exc}")
 
     with col_result:
         st.markdown("#### النتيجة")

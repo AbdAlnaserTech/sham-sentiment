@@ -52,19 +52,42 @@ def init_app() -> tuple[ProjectPaths, Any]:
     return paths, config
 
 
-@st.cache_resource(show_spinner="جاري تحميل نموذج BERT...")
+@st.cache_resource(show_spinner="جاري تحميل نموذج BERT من HuggingFace (قد يستغرق 1-3 دقائق)...")
 def get_predictor():
     """يحمّل BERT مرة واحدة لكل عملية خادم."""
-    root = get_project_root()
-    predictor = load_predictor(root_dir=root)
-    if is_cloud_runtime():
-        from models.bert_predictor import warmup_bert_model
+    return load_predictor(root_dir=get_project_root())
 
+
+def ensure_bert_ready() -> bool:
+    """
+    تهيئة BERT على Streamlit Cloud — مرة واحدة لكل جلسة.
+
+    يعرض رسالة واضحة أثناء تنزيل النموذج بدل spinner صامت.
+    """
+    if st.session_state.get("bert_ready"):
+        return True
+
+    if not is_cloud_runtime():
+        st.session_state["bert_ready"] = True
+        return True
+
+    with st.status("جاري تهيئة نموذج الذكاء الاصطناعي...", expanded=True) as status:
+        st.caption(
+            "أول تشغيل على السحابة: يتم تنزيل النموذج من HuggingFace. "
+            "قد يستغرق 1–3 دقائق — لا تغلق الصفحة."
+        )
         try:
-            warmup_bert_model(root)
-        except Exception:
-            pass
-    return predictor
+            get_predictor()
+            from models.bert_predictor import warmup_bert_model
+
+            warmup_bert_model(get_project_root())
+            st.session_state["bert_ready"] = True
+            status.update(label="✅ النموذج جاهز للتحليل", state="complete", expanded=False)
+            return True
+        except Exception as exc:
+            status.update(label="❌ تعذّر تحميل النموذج", state="error")
+            st.error(f"خطأ تحميل BERT: {exc}")
+            return False
 
 
 def append_history(result: Dict[str, Any]) -> None:

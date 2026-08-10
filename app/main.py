@@ -13,8 +13,8 @@ import streamlit as st
 from components.app_header import render_app_footer, render_app_header, render_sidebar_brand
 from components.auth_panel import can_admin, can_analyze, render_login_form
 from components.ui_styles import apply_app_styles
-from cloud_setup import cloud_max_batch_size
-from shared import init_app, render_sidebar_settings
+from cloud_setup import cloud_max_batch_size, is_cloud_runtime
+from shared import ensure_bert_ready, init_app, render_sidebar_settings
 from tabs.about import render_about_tab
 from tabs.batch import render_batch_tab
 from tabs.dashboard import render_dashboard_tab
@@ -54,6 +54,9 @@ if not can_analyze():
     st.stop()
 
 render_app_header(config.ui)
+
+if is_cloud_runtime():
+    ensure_bert_ready()
 
 # ── 5 تبويبات — كل واحد بملف في app/tabs/ ──
 tab_dashboard, tab_single, tab_batch, tab_live, tab_about = st.tabs([
