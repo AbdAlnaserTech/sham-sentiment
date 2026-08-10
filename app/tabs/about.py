@@ -16,7 +16,7 @@ from typing import Any
 import streamlit as st
 import streamlit.components.v1 as components
 
-from cloud_setup import get_public_app_url
+from cloud_setup import get_public_app_url, get_whatsapp_share_url
 
 # ── بلوك 1: ثوابت العرض ───────────────────────────────────────────────────
 # اسم النموذج الظاهر في قسم «التقنيات المستخدمة»
@@ -462,6 +462,7 @@ def render_about_panel(config: Any) -> None:
     dept = ui.get("department_ar", "قسم الهندسة المعلوماتية")
     github = platform.get("github_url", "")
     app_url = get_public_app_url(platform) or str(platform.get("app_url", "")).strip()
+    whatsapp_url = get_whatsapp_share_url(platform) or ""
 
     _inject_about_styles()
 
@@ -649,6 +650,14 @@ def render_about_panel(config: Any) -> None:
         """,
         unsafe_allow_html=True,
     )
+
+    if whatsapp_url:
+        st.link_button(
+            "📲 شارك التطبيق عبر واتساب",
+            whatsapp_url,
+            use_container_width=True,
+            type="secondary",
+        )
 
     st.markdown("</div>", unsafe_allow_html=True)
 

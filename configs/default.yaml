@@ -29,6 +29,7 @@ platform:
   api_key: ""
   github_url: "https://github.com/AbdAlnaserTech/sham-sentiment"
   app_url: "https://sham-sentiment-nas.streamlit.app"
+  whatsapp_share_message: ""
 
 # ── واجهة المستخدم ───────────────────────────────────────────────────────────
 ui:

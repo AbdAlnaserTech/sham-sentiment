@@ -97,19 +97,22 @@ def render_login_form() -> bool:
 
     # ── روابط GitHub والتطبيق من YAML (اختياري) ──
     try:
-        from cloud_setup import get_public_app_url
+        from cloud_setup import get_public_app_url, get_whatsapp_share_url
         from config import load_config
 
         cfg = load_config()
         platform = cfg.platform
         github = platform.get("github_url", "")
         app_url = get_public_app_url(platform) or str(platform.get("app_url", "")).strip() or None
+        whatsapp_url = get_whatsapp_share_url(platform)
 
         links = []
         if github:
             links.append(f"[GitHub]({github})")
         if app_url:
             links.append(f"[التطبيق]({app_url})")
+        if whatsapp_url:
+            links.append(f"[واتساب]({whatsapp_url})")
         if links:
             st.caption(" · ".join(links))
     except Exception:

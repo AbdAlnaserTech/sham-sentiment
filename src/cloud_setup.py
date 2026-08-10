@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+from urllib.parse import quote
 from typing import Any
 from urllib.parse import urlparse
 
@@ -61,6 +62,23 @@ def get_public_app_url(platform: dict[str, Any] | None = None) -> str | None:
         if app_url:
             return app_url
     return None
+
+
+def get_whatsapp_share_url(platform: dict[str, Any] | None = None) -> str | None:
+    """رابط مشاركة التطبيق عبر واتساب (يفتح واتساب مع رسالة جاهزة)."""
+    if not platform:
+        return None
+    app_url = get_public_app_url(platform) or str(platform.get("app_url", "")).strip()
+    if not app_url:
+        return None
+    message = str(platform.get("whatsapp_share_message", "")).strip()
+    if not message:
+        message = (
+            "📊 منصة تحليل مشاعر التعليقات — جامعة الشام\n"
+            f"{app_url}\n\n"
+            "🔐 للدخول:\nadmin / Admin@2026"
+        )
+    return f"https://wa.me/?text={quote(message)}"
 
 
 def is_cloud_light_mode() -> bool:
