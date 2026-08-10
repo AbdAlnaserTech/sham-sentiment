@@ -77,8 +77,8 @@ def ensure_bert_ready() -> bool:
 
     with st.status("جاري تهيئة نموذج الذكاء الاصطناعي...", expanded=True) as status:
         st.caption(
-            "أول تشغيل على السحابة: يتم تنزيل النموذج من HuggingFace. "
-            "قد يستغرق 1–3 دقائق — لا تغلق الصفحة."
+            "أول تشغيل على السحابة: يتم تنزيل نموذج العربية (CAMeLBERT). "
+            "قد يستغرق 2–4 دقائق — لا تغلق الصفحة."
         )
         try:
             get_predictor()
