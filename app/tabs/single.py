@@ -12,6 +12,7 @@ from components.demo_samples import render_demo_picker
 from components.sentiment_display import render_sentiment_result
 from components.wordcloud import render_wordcloud
 from language import is_arabic
+from models.bert_predictor import BertNotAvailableError
 from shared import MODEL_KIND, append_history, get_predictor, resolve_language
 
 
@@ -47,6 +48,15 @@ def render_single_tab(*, auto_lang: bool, lang_choice: str) -> None:
                     st.error("تعذّر تشغيل النظام. أعد تشغيل التطبيق أو تواصل مع المسؤول.")
                 except ValueError as exc:
                     st.error(str(exc))
+                except Exception as exc:
+                    name = exc.__class__.__name__
+                    if "BertNotAvailable" in name:
+                        st.error(
+                            "تعذّر تحميل نموذج BERT على السحابة. "
+                            "انتظر 1–2 دقيقة (تحميل أول مرة) ثم اضغط «تحليل التعليق» مجدداً."
+                        )
+                    else:
+                        st.error(f"حدث خطأ أثناء التحليل: {exc}")
 
     with col_result:
         st.markdown("#### النتيجة")

@@ -20,7 +20,7 @@ from config import load_config
 from language import detect_language
 from models.registry import load_predictor
 from paths import ProjectPaths, ensure_dirs, get_project_root
-from cloud_setup import bootstrap_cloud
+from cloud_setup import bootstrap_cloud, is_cloud_runtime
 
 ModelKind = str
 MODEL_KIND = "bert"
@@ -52,10 +52,19 @@ def init_app() -> tuple[ProjectPaths, Any]:
     return paths, config
 
 
-@st.cache_resource(show_spinner="جاري تحميل النظام...")
+@st.cache_resource(show_spinner="جاري تحميل نموذج BERT...")
 def get_predictor():
     """يحمّل BERT مرة واحدة لكل عملية خادم."""
-    return load_predictor(root_dir=get_project_root())
+    root = get_project_root()
+    predictor = load_predictor(root_dir=root)
+    if is_cloud_runtime():
+        from models.bert_predictor import warmup_bert_model
+
+        try:
+            warmup_bert_model(root)
+        except Exception:
+            pass
+    return predictor
 
 
 def append_history(result: Dict[str, Any]) -> None:

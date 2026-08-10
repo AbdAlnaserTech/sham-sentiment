@@ -38,13 +38,99 @@ _FINETUNED_PIPELINE = None  # نموذج fine-tune محلياً في models/bert
 
 
 def _cloud_light_mode() -> bool:
-    """وضع خفيف للسحابة — يعطّل دمج نموذجين للعربي."""
+    """وضع خفيف للسحابة — نموذج واحد صغير حسب اللغة (بدون XLM-RoBERTa)."""
     try:
         from cloud_setup import is_cloud_light_mode
 
         return is_cloud_light_mode()
     except ImportError:
         return os.environ.get("SENTIMENT_CLOUD_LIGHT", "").strip().lower() in {"1", "true", "yes"}
+
+
+def _release_pipelines() -> None:
+    """تحرير الذاكرة — مهم على Streamlit Cloud (~1 GB RAM)."""
+    global _MULTI_PIPELINE, _EN_PIPELINE, _AR_PIPELINE, _FINETUNED_PIPELINE
+    _MULTI_PIPELINE = None
+    _EN_PIPELINE = None
+    _AR_PIPELINE = None
+    _FINETUNED_PIPELINE = None
+    try:
+        import gc
+
+        gc.collect()
+        import torch
+
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+    except Exception:
+        pass
+
+
+def _pipeline_model_kwargs() -> dict[str, Any]:
+    """خيارات تحميل أوفر للذاكرة على السحابة."""
+    if _cloud_light_mode():
+        return {"low_cpu_mem_usage": True}
+    return {}
+
+
+def _create_sentiment_pipeline(model_id: str):
+    """إنشاء pipeline مع إعدادات مناسبة للسحابة."""
+    kwargs: dict[str, Any] = {
+        "top_k": None,
+        "truncation": True,
+    }
+    model_kwargs = _pipeline_model_kwargs()
+    if model_kwargs:
+        kwargs["model_kwargs"] = model_kwargs
+    return pipeline(
+        "sentiment-analysis",
+        model=model_id,
+        tokenizer=model_id,
+        **kwargs,
+    )
+
+
+def _pipeline_for_language(lang: str):
+    """
+    اختيار pipeline حسب اللغة.
+
+    على السحابة: نماذج أصغر (EN/AR) بدل XLM-RoBERTa الثقيل.
+    """
+    if _cloud_light_mode():
+        if lang == "en":
+            return _get_en_pipeline()
+        if lang in {"ar_fusha", "ar_shami"}:
+            try:
+                return _get_ar_pipeline()
+            except Exception as exc:
+                logger.warning("Arabic model unavailable on cloud, falling back to English: %s", exc)
+                return _get_en_pipeline()
+        return _get_en_pipeline()
+
+    return _get_multi_pipeline()
+
+
+def _run_inference(raw: str, lang: str, root_dir: str | None = None) -> List[Dict[str, Any]]:
+    """تشغيل inference لنص واحد — يعيد scores."""
+    if finetuned_model_available(root_dir):
+        return _get_finetuned_pipeline(root_dir)(raw)[0]
+
+    if lang in {"ar_fusha", "ar_shami"} and not _cloud_light_mode():
+        try:
+            scores_multi = _get_multi_pipeline()(raw)[0]
+            scores_ar = _get_ar_pipeline()(raw)[0]
+            return _merge_sentiment_scores(scores_multi, scores_ar, secondary_weight=0.45)
+        except Exception as exc:
+            logger.warning("Arabic ensemble failed, using multilingual model: %s", exc)
+
+    pipe = _pipeline_for_language(lang)
+    output = pipe(raw)
+    return output[0] if output and isinstance(output[0], list) else output
+
+
+def warmup_bert_model(root_dir: str | None = None) -> None:
+    """تحميل مسبق على السحابة — يظهر الخطأ مبكراً بدل انهيار الواجهة."""
+    _run_inference("test", "en", root_dir)
 
 
 def _finetuned_model_dir(root_dir: str | None = None) -> str:
@@ -207,13 +293,7 @@ def _get_multi_pipeline():
         if not BERT_AVAILABLE:
             raise BertNotAvailableError("Install transformers and torch: pip install -r requirements.txt")
         logger.info("Loading multilingual BERT model: %s", MULTI_MODEL)
-        _MULTI_PIPELINE = pipeline(
-            "sentiment-analysis",
-            model=MULTI_MODEL,
-            tokenizer=MULTI_MODEL,
-            top_k=None,
-            truncation=True,
-        )
+        _MULTI_PIPELINE = _create_sentiment_pipeline(MULTI_MODEL)
     return _MULTI_PIPELINE
 
 
@@ -224,13 +304,7 @@ def _get_en_pipeline():
         if not BERT_AVAILABLE:
             raise BertNotAvailableError("Install transformers and torch: pip install -r requirements.txt")
         logger.info("Loading English BERT model: %s", EN_MODEL)
-        _EN_PIPELINE = pipeline(
-            "sentiment-analysis",
-            model=EN_MODEL,
-            tokenizer=EN_MODEL,
-            top_k=None,
-            truncation=True,
-        )
+        _EN_PIPELINE = _create_sentiment_pipeline(EN_MODEL)
     return _EN_PIPELINE
 
 
@@ -241,13 +315,7 @@ def _get_ar_pipeline():
         if not BERT_AVAILABLE:
             raise BertNotAvailableError("Install transformers and torch: pip install -r requirements.txt")
         logger.info("Loading Arabic CAMeLBERT model: %s", AR_MODEL)
-        _AR_PIPELINE = pipeline(
-            "sentiment-analysis",
-            model=AR_MODEL,
-            tokenizer=AR_MODEL,
-            top_k=None,
-            truncation=True,
-        )
+        _AR_PIPELINE = _create_sentiment_pipeline(AR_MODEL)
     return _AR_PIPELINE
 
 
@@ -423,30 +491,15 @@ class BertSentimentPredictor:
         raw = text.strip()
 
         try:
-            if finetuned_model_available(self.root_dir):
-                scores = _get_finetuned_pipeline(self.root_dir)(raw)[0]
-            elif (
-                lang in {"ar_fusha", "ar_shami"}
-                and not _cloud_light_mode()
-            ):
-                try:
-                    scores_multi = _get_multi_pipeline()(raw)[0]
-                    scores_ar = _get_ar_pipeline()(raw)[0]
-                    scores = _merge_sentiment_scores(scores_multi, scores_ar, secondary_weight=0.45)
-                except Exception:
-                    scores = _get_multi_pipeline()(raw)[0]
-            else:
-                scores = _get_multi_pipeline()(raw)[0]
+            scores = _run_inference(raw, lang, self.root_dir)
         except BertNotAvailableError:
             raise
         except Exception as exc:
-            try:
-                if lang == "en":
-                    scores = _get_en_pipeline()(raw)[0]
-                else:
-                    scores = _get_ar_pipeline()(raw)[0]
-            except Exception as fallback_exc:
-                raise BertNotAvailableError(str(exc)) from fallback_exc
+            logger.exception("BERT inference failed")
+            raise BertNotAvailableError(
+                "تعذّر تحميل أو تشغيل نموذج BERT. "
+                "على Streamlit Cloud انتظر دقيقة ثم أعد المحاولة."
+            ) from exc
 
         return self._scores_to_result(raw, lang, scores)
 
@@ -505,7 +558,95 @@ class BertSentimentPredictor:
                 )
             return self._finalize_batch_results(results, texts, languages)
 
-        # ── مسار 2: XLM-RoBERTa متعدد اللغات (يُنزّل تلقائياً على السحابة) ──
+        # ── مسار 2: السحابة — نماذج EN/AR أصغر (تجنّب XLM-RoBERTa الثقيل) ──
+        if _cloud_light_mode():
+            results = [{} for _ in texts]
+            en_indices: List[int] = []
+            en_texts: List[str] = []
+            ar_indices: List[int] = []
+            ar_texts: List[str] = []
+
+            for index, (text, lang) in enumerate(zip(texts, languages)):
+                raw = str(text or "").strip()
+                if not raw:
+                    results[index] = {
+                        "text": text,
+                        "language": lang or "en",
+                        "cleaned_text": "",
+                        "sentiment": "neutral",
+                        "confidence": 0.0,
+                        "distribution": {},
+                        "is_reliable": False,
+                        "error": "Empty comment",
+                        "model": self.model_name,
+                    }
+                    continue
+
+                resolved = lang if lang and not auto_language else (lang or detect_language(raw))
+                if resolved == "en":
+                    en_indices.append(index)
+                    en_texts.append(raw)
+                else:
+                    ar_indices.append(index)
+                    ar_texts.append(raw)
+
+            if en_texts:
+                try:
+                    en_pipe = _get_en_pipeline()
+                    for start in range(0, len(en_texts), batch_size):
+                        chunk = en_texts[start:start + batch_size]
+                        chunk_indices = en_indices[start:start + batch_size]
+                        self._apply_batch_chunk(
+                            en_pipe,
+                            texts,
+                            languages,
+                            chunk_indices,
+                            chunk,
+                            results,
+                            auto_language=False,
+                        )
+                except BertNotAvailableError as exc:
+                    logger.warning("English batch path failed: %s", exc)
+
+            if ar_texts:
+                _release_pipelines()
+                try:
+                    ar_pipe = _get_ar_pipeline()
+                    for start in range(0, len(ar_texts), batch_size):
+                        chunk = ar_texts[start:start + batch_size]
+                        chunk_indices = ar_indices[start:start + batch_size]
+                        self._apply_batch_chunk(
+                            ar_pipe,
+                            texts,
+                            languages,
+                            chunk_indices,
+                            chunk,
+                            results,
+                            auto_language,
+                        )
+                except BertNotAvailableError as exc:
+                    logger.warning("Arabic batch path failed: %s", exc)
+                    _release_pipelines()
+                    try:
+                        en_pipe = _get_en_pipeline()
+                        for start in range(0, len(ar_texts), batch_size):
+                            chunk = ar_texts[start:start + batch_size]
+                            chunk_indices = ar_indices[start:start + batch_size]
+                            self._apply_batch_chunk(
+                                en_pipe,
+                                texts,
+                                languages,
+                                chunk_indices,
+                                chunk,
+                                results,
+                                auto_language,
+                            )
+                    except BertNotAvailableError:
+                        pass
+
+            return self._finalize_batch_results(results, texts, languages)
+
+        # ── مسار 2b: XLM-RoBERTa متعدد اللغات (محلي) ──
         try:
             pipe = _get_multi_pipeline()
             results: List[Dict[str, Any]] = [{} for _ in texts]

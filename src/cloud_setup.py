@@ -82,6 +82,8 @@ def bootstrap_cloud(db_path: str | None = None) -> None:
     os.environ.setdefault("SENTIMENT_CLOUD", "1")
     os.environ.setdefault("SENTIMENT_CLOUD_LIGHT", "1")
     os.environ.setdefault("SENTIMENT_MAX_BATCH", "100")
+    os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
+    os.environ.setdefault("HF_HUB_DOWNLOAD_TIMEOUT", "300")
 
     # تجنب إعادة التهيئة في نفس العملية
     if os.environ.get("SENTIMENT_DB_READY") == "1":
