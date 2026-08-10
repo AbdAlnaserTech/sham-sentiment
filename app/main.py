@@ -23,7 +23,7 @@ from tabs.single import render_single_tab
 
 st.set_page_config(
     page_title="تحليل آراء العملاء | جامعة الشام",
-    page_icon="assets/logo.png",
+    page_icon="📊",
     layout="wide",
     initial_sidebar_state="expanded",
 )

@@ -14,12 +14,13 @@ import sys
 # ROOT = مجلد sentiment_project/ (أب app/)
 # SRC  = مجلد sentiment_project/src/ (الكود الأساسي)
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+APP = os.path.dirname(os.path.abspath(__file__))
 SRC = os.path.join(ROOT, "src")
 
-# ── بلوك 2: إدراج src/ في بداية sys.path ───────────────────────────────────
-# insert(0) يعني أولوية عالية — Python يبحث هنا قبل site-packages
-if SRC not in sys.path:
-    sys.path.insert(0, SRC)
+# app/ + src/ — ضروري على Streamlit Cloud عند تشغيل app/main.py
+for path in (APP, SRC):
+    if path not in sys.path:
+        sys.path.insert(0, path)
 
 # ── بلوك 3: ثابت جذر المشروع — يُستخدم أحياناً في المسارات النسبية ─────────
 from paths import get_project_root  # noqa: E402 — بعد تعديل sys.path
