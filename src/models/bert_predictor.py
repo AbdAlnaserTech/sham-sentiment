@@ -50,9 +50,14 @@ def _cloud_light_mode() -> bool:
 
 
 def _prepare_inference_text(text: str) -> str:
-    """قص النص على السحابة — العربي الطويل يبطّئ أو يعلّق التحليل."""
+    """قص النص على Streamlit Cloud فقط — العربي الطويل يبطّئ التحليل."""
     raw = (text or "").strip()
-    if not raw or not _cloud_light_mode():
+    try:
+        from cloud_setup import is_cloud_runtime
+
+        if not is_cloud_runtime():
+            return raw
+    except ImportError:
         return raw
     max_chars = 280 if is_arabic(raw) else 500
     if len(raw) > max_chars:

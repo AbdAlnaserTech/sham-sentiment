@@ -20,6 +20,8 @@ from components.batch_results import (
 )
 from shared import MODEL_KIND, get_predictor
 
+from cloud_setup import is_cloud_runtime
+
 
 def render_batch_results_view(*, save_button_key: str) -> None:
     """ملخص + جدول + حفظ + تصدير CSV."""
@@ -61,8 +63,8 @@ def execute_batch_analysis(
         st.warning("أدخل تعليقاً واحداً على الأقل.")
         return
     try:
-        if not st.session_state.get("bert_ready"):
-            st.warning("انتظر حتى يكتمل تحميل النموذج أعلى الصفحة.")
+        if is_cloud_runtime() and not st.session_state.get("bert_ready"):
+            st.warning("انتظر حتى يظهر «✅ النموذج جاهز» أعلى الصفحة.")
             return
         predictor = get_predictor()
         progress = st.progress(0, text=f"جاري تحليل {len(comments)} تعليق...")

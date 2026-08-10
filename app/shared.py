@@ -49,6 +49,10 @@ def init_app() -> tuple[ProjectPaths, Any]:
         st.session_state["dark_mode"] = False
     st.session_state["model_kind"] = MODEL_KIND
 
+    # محلياً: النموذج جاهز فوراً — bert_ready للسحابة فقط
+    if not is_cloud_runtime():
+        st.session_state.setdefault("bert_ready", True)
+
     return paths, config
 
 
