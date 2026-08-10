@@ -97,12 +97,13 @@ def render_login_form() -> bool:
 
     # ── روابط GitHub والتطبيق من YAML (اختياري) ──
     try:
+        from cloud_setup import get_public_app_url
         from config import load_config
 
         cfg = load_config()
         platform = cfg.platform
         github = platform.get("github_url", "")
-        app_url = platform.get("app_url", "")
+        app_url = get_public_app_url(platform) or str(platform.get("app_url", "")).strip() or None
 
         links = []
         if github:

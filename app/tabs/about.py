@@ -16,6 +16,8 @@ from typing import Any
 import streamlit as st
 import streamlit.components.v1 as components
 
+from cloud_setup import get_public_app_url
+
 # ── بلوك 1: ثوابت العرض ───────────────────────────────────────────────────
 # اسم النموذج الظاهر في قسم «التقنيات المستخدمة»
 MODEL_DISPLAY_NAME = "BERT · XLM-RoBERTa"
@@ -459,7 +461,7 @@ def render_about_panel(config: Any) -> None:
     uni = ui.get("university_name_ar", "جامعة الشام")
     dept = ui.get("department_ar", "قسم الهندسة المعلوماتية")
     github = platform.get("github_url", "")
-    app_url = platform.get("app_url", "")
+    app_url = get_public_app_url(platform) or str(platform.get("app_url", "")).strip()
 
     _inject_about_styles()
 
@@ -609,6 +611,14 @@ def render_about_panel(config: Any) -> None:
     )
 
     # ── قسم 7: معلومات المشروع ──
+    app_link_row = ""
+    if app_url:
+        app_link_row = f"""
+                <div class="about-info-row">
+                    <span class="about-info-label">رابط التطبيق:</span>
+                    <span class="about-info-value"><a href="{app_url}" target="_blank" rel="noopener">{app_url.replace("https://", "")}</a></span>
+                </div>"""
+
     st.markdown(
         f"""
         <section class="about-section">
@@ -633,11 +643,7 @@ def render_about_panel(config: Any) -> None:
                 <div class="about-info-row">
                     <span class="about-info-label">GitHub:</span>
                     <span class="about-info-value"><a href="{github}" target="_blank" rel="noopener">{github.replace("https://", "")}</a></span>
-                </div>
-                <div class="about-info-row">
-                    <span class="about-info-label">استضافة التطبيق:</span>
-                    <span class="about-info-value"><a href="{app_url}" target="_blank" rel="noopener">{app_url.replace("https://", "")}</a></span>
-                </div>
+                </div>{app_link_row}
             </div>
         </section>
         """,

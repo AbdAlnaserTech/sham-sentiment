@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import os
+from typing import Any
+from urllib.parse import urlparse
 
 
 def _apply_streamlit_secrets() -> None:
@@ -27,8 +29,38 @@ def is_cloud_runtime() -> bool:
     runtime = os.environ.get("STREAMLIT_RUNTIME_ENVIRONMENT", "").strip().lower()
     if runtime in {"cloud", "streamlit_cloud"}:
         return True
+    # مسار Streamlit Community Cloud القياسي
+    if os.path.isdir("/mount/src"):
+        return True
     flag = os.environ.get("SENTIMENT_CLOUD", "").strip().lower()
     return flag in {"1", "true", "yes", "on"}
+
+
+def get_public_app_url(platform: dict[str, Any] | None = None) -> str | None:
+    """
+    رابط مشاركة التطبيق — يُعرض في الواجهة فقط على Streamlit Cloud.
+
+    محلياً (localhost) يرجع None حتى لا يظهر رابط سحابي معطّل.
+    """
+    if not is_cloud_runtime():
+        return None
+
+    try:
+        import streamlit as st
+
+        current = getattr(getattr(st, "context", None), "url", None)
+        if current and ".streamlit.app" in current:
+            parsed = urlparse(str(current))
+            if parsed.scheme and parsed.netloc:
+                return f"{parsed.scheme}://{parsed.netloc}"
+    except Exception:
+        pass
+
+    if platform:
+        app_url = str(platform.get("app_url", "")).strip()
+        if app_url:
+            return app_url
+    return None
 
 
 def is_cloud_light_mode() -> bool:

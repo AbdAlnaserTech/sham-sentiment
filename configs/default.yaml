@@ -18,7 +18,7 @@ inference:
   confidence_threshold: 55.0
   max_text_length: 5000
   bert_neutral_threshold: 0.58
-  use_finetuned: true
+  use_finetuned: false
   default_model: bert
   max_batch_size: 2000
 
@@ -28,7 +28,7 @@ platform:
   negative_alert_threshold: 0.45
   api_key: ""
   github_url: "https://github.com/AbdAlnaserTech/sham-sentiment"
-  app_url: "https://sham-sentiment.streamlit.app"
+  app_url: "https://sham-sentiment-ehgoenfwrgbz4hkfetqegj.streamlit.app"
 
 # ── واجهة المستخدم ───────────────────────────────────────────────────────────
 ui:
