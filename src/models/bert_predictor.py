@@ -208,9 +208,14 @@ LABEL_NORMALIZE = {
     "pos": "positive",
     "neg": "negative",
     "neu": "neutral",
+    "posi": "positive",
+    "negi": "negative",
     "label_0": "negative",
     "label_1": "neutral",
     "label_2": "positive",
+    "0": "negative",
+    "1": "neutral",
+    "2": "positive",
 }
 
 
@@ -402,6 +407,12 @@ class BertSentimentPredictor:
                 confidence = safe_percent(best_score * 100.0)
 
         threshold = 55.0
+        model_used = self.model_name
+        if language in {"ar_fusha", "ar_shami"}:
+            model_used = "camelbert+xlm-roberta" if not _cloud_light_mode() else "camelbert-ar"
+        elif language == "en":
+            model_used = "twitter-roberta-en" if _cloud_light_mode() else self.model_name
+
         return {
             "text": text,
             "language": language,
@@ -411,7 +422,7 @@ class BertSentimentPredictor:
             "distribution": distribution,
             "is_reliable": confidence >= threshold,
             "confidence_threshold": threshold,
-            "model": self.model_name,
+            "model": model_used,
         }
 
     def _resolve_batch_language(
@@ -427,6 +438,85 @@ class BertSentimentPredictor:
             return lang
         raw = str(texts[index] or "").strip()
         return lang or detect_language(raw) if raw else "en"
+
+    def _split_batch_by_language(
+        self,
+        texts: List[str],
+        languages: List[Optional[str]],
+        auto_language: bool,
+    ) -> tuple[List[Dict[str, Any]], List[int], List[str], List[int], List[str]]:
+        """يفرّغ النصوص إلى results + مجموعات en/ar."""
+        results: List[Dict[str, Any]] = [{} for _ in texts]
+        en_indices: List[int] = []
+        en_texts: List[str] = []
+        ar_indices: List[int] = []
+        ar_texts: List[str] = []
+
+        for index, (text, lang) in enumerate(zip(texts, languages)):
+            raw = str(text or "").strip()
+            if not raw:
+                results[index] = {
+                    "text": text,
+                    "language": lang or "en",
+                    "cleaned_text": "",
+                    "sentiment": "neutral",
+                    "confidence": 0.0,
+                    "distribution": {},
+                    "is_reliable": False,
+                    "error": "Empty comment",
+                    "model": self.model_name,
+                }
+                continue
+
+            resolved = lang if lang and not auto_language else (lang or detect_language(raw))
+            prepared = _prepare_inference_text(raw)
+            if resolved == "en":
+                en_indices.append(index)
+                en_texts.append(prepared)
+            else:
+                ar_indices.append(index)
+                ar_texts.append(prepared)
+
+        return results, en_indices, en_texts, ar_indices, ar_texts
+
+    def _apply_arabic_ensemble_batch(
+        self,
+        texts: List[str],
+        languages: List[Optional[str]],
+        ar_indices: List[int],
+        ar_texts: List[str],
+        results: List[Dict[str, Any]],
+        auto_language: bool,
+        batch_size: int,
+    ) -> None:
+        """تحليل دفعة عربية محلياً — دمج XLM-RoBERTa + CAMeLBERT."""
+        multi_pipe = _get_multi_pipeline()
+        ar_pipe = _get_ar_pipeline()
+        for start in range(0, len(ar_texts), batch_size):
+            chunk = ar_texts[start:start + batch_size]
+            chunk_indices = ar_indices[start:start + batch_size]
+            try:
+                multi_split = _split_pipeline_outputs(multi_pipe(chunk), len(chunk))
+                ar_split = _split_pipeline_outputs(ar_pipe(chunk), len(chunk))
+            except Exception as exc:
+                logger.warning("Arabic ensemble batch failed, item fallback: %s", exc)
+                multi_split = ar_split = None
+
+            if multi_split and ar_split and len(multi_split) == len(chunk):
+                for idx, ms, ars in zip(chunk_indices, multi_split, ar_split):
+                    lang = self._resolve_batch_language(idx, texts, languages, auto_language)
+                    merged = _merge_sentiment_scores(ms, ars, secondary_weight=0.45)
+                    results[idx] = self._scores_to_result(str(texts[idx]), lang, merged)
+                continue
+
+            for idx in chunk_indices:
+                raw = str(texts[idx] or "").strip()
+                lang = self._resolve_batch_language(idx, texts, languages, auto_language)
+                try:
+                    scores = _run_inference(raw, lang, self.root_dir)
+                    results[idx] = self._scores_to_result(raw, lang, scores)
+                except Exception as exc:
+                    results[idx] = _batch_error_item(texts[idx], lang, self.model_name, str(exc))
 
     def _apply_batch_chunk(
         self,
@@ -461,7 +551,7 @@ class BertSentimentPredictor:
                 scores = out[0] if out and isinstance(out[0], list) else out
                 if not isinstance(scores, list):
                     scores = []
-                results[idx] = self._scores_to_result(raw, lang, scores)
+                results[idx] = self._scores_to_result(str(texts[idx]), lang, scores)
             except Exception as exc:
                 logger.warning("Single-item inference failed for index %s: %s", idx, exc)
                 results[idx] = _batch_error_item(
@@ -470,6 +560,31 @@ class BertSentimentPredictor:
                     self.model_name,
                     f"Analysis failed: {exc}",
                 )
+
+    def _run_english_batch(
+        self,
+        texts: List[str],
+        languages: List[Optional[str]],
+        en_indices: List[int],
+        en_texts: List[str],
+        results: List[Dict[str, Any]],
+        auto_language: bool,
+        batch_size: int,
+    ) -> None:
+        """تحليل دفعة إنجليزية."""
+        en_pipe = _get_en_pipeline()
+        for start in range(0, len(en_texts), batch_size):
+            chunk = en_texts[start:start + batch_size]
+            chunk_indices = en_indices[start:start + batch_size]
+            self._apply_batch_chunk(
+                en_pipe,
+                texts,
+                languages,
+                chunk_indices,
+                chunk,
+                results,
+                auto_language=auto_language,
+            )
 
     def _finalize_batch_results(
         self,
@@ -584,36 +699,9 @@ class BertSentimentPredictor:
 
         # ── مسار 2: السحابة — عربي/إنجليزي (نموذج واحد في الذاكرة) ──
         if _cloud_light_mode():
-            results: List[Dict[str, Any]] = [{} for _ in texts]
-            en_indices: List[int] = []
-            en_texts: List[str] = []
-            ar_indices: List[int] = []
-            ar_texts: List[str] = []
-
-            for index, (text, lang) in enumerate(zip(texts, languages)):
-                raw = str(text or "").strip()
-                if not raw:
-                    results[index] = {
-                        "text": text,
-                        "language": lang or "en",
-                        "cleaned_text": "",
-                        "sentiment": "neutral",
-                        "confidence": 0.0,
-                        "distribution": {},
-                        "is_reliable": False,
-                        "error": "Empty comment",
-                        "model": self.model_name,
-                    }
-                    continue
-
-                resolved = lang if lang and not auto_language else (lang or detect_language(raw))
-                prepared = _prepare_inference_text(raw)
-                if resolved == "en":
-                    en_indices.append(index)
-                    en_texts.append(prepared)
-                else:
-                    ar_indices.append(index)
-                    ar_texts.append(prepared)
+            results, en_indices, en_texts, ar_indices, ar_texts = self._split_batch_by_language(
+                texts, languages, auto_language
+            )
 
             if ar_texts:
                 try:
@@ -637,131 +725,52 @@ class BertSentimentPredictor:
                 if ar_texts:
                     _release_pipelines()
                 try:
-                    en_pipe = _get_en_pipeline()
-                    for start in range(0, len(en_texts), batch_size):
-                        chunk = en_texts[start:start + batch_size]
-                        chunk_indices = en_indices[start:start + batch_size]
-                        self._apply_batch_chunk(
-                            en_pipe,
-                            texts,
-                            languages,
-                            chunk_indices,
-                            chunk,
-                            results,
-                            auto_language=False,
-                        )
+                    self._run_english_batch(
+                        texts,
+                        languages,
+                        en_indices,
+                        en_texts,
+                        results,
+                        auto_language=False,
+                        batch_size=batch_size,
+                    )
                 except BertNotAvailableError as exc:
                     logger.warning("English cloud batch failed: %s", exc)
 
             return self._finalize_batch_results(results, texts, languages)
 
-        # ── مسار 2b: XLM-RoBERTa متعدد اللغات (محلي) ──
-        try:
-            pipe = _get_multi_pipeline()
-            results: List[Dict[str, Any]] = [{} for _ in texts]
-            valid_indices: List[int] = []
-            valid_texts: List[str] = []
-
-            for index, text in enumerate(texts):
-                raw = str(text or "").strip()
-                if not raw:
-                    results[index] = {
-                        "text": text,
-                        "language": languages[index] or "en",
-                        "cleaned_text": "",
-                        "sentiment": "neutral",
-                        "confidence": 0.0,
-                        "distribution": {},
-                        "is_reliable": False,
-                        "error": "Empty comment",
-                        "model": self.model_name,
-                    }
-                else:
-                    valid_indices.append(index)
-                    valid_texts.append(_prepare_inference_text(raw))
-
-            for start in range(0, len(valid_texts), batch_size):
-                chunk = valid_texts[start:start + batch_size]
-                chunk_indices = valid_indices[start:start + batch_size]
-                self._apply_batch_chunk(
-                    pipe,
-                    texts,
-                    languages,
-                    chunk_indices,
-                    chunk,
-                    results,
-                    auto_language,
-                )
-            return self._finalize_batch_results(results, texts, languages)
-        except BertNotAvailableError:
-            pass
-
-        # ── مسار 3: فصل إنجليزي/عربي ──
-        results = [{} for _ in texts]
-        en_indices: List[int] = []
-        en_texts: List[str] = []
-        ar_indices: List[int] = []
-        ar_texts: List[str] = []
-
-        for index, (text, lang) in enumerate(zip(texts, languages)):
-            raw = str(text or "").strip()
-            if not raw:
-                results[index] = {
-                    "text": text,
-                    "language": lang or "en",
-                    "cleaned_text": "",
-                    "sentiment": "neutral",
-                    "confidence": 0.0,
-                    "distribution": {},
-                    "is_reliable": False,
-                    "error": "Empty comment",
-                    "model": self.model_name,
-                }
-                continue
-
-            resolved = lang if lang and not auto_language else (lang or detect_language(raw))
-            if resolved == "en":
-                en_indices.append(index)
-                en_texts.append(raw)
-            else:
-                ar_indices.append(index)
-                ar_texts.append(raw)
-
-        if en_texts:
-            try:
-                en_pipe = _get_en_pipeline()
-                for start in range(0, len(en_texts), batch_size):
-                    chunk = en_texts[start:start + batch_size]
-                    chunk_indices = en_indices[start:start + batch_size]
-                    self._apply_batch_chunk(
-                        en_pipe,
-                        texts,
-                        languages,
-                        chunk_indices,
-                        chunk,
-                        results,
-                        auto_language=False,
-                    )
-            except BertNotAvailableError:
-                logger.warning("English BERT unavailable for batch path.")
+        # ── مسار 3: محلي — فصل عربي/إنجليزي + ensemble للعربي ──
+        results, en_indices, en_texts, ar_indices, ar_texts = self._split_batch_by_language(
+            texts, languages, auto_language
+        )
 
         if ar_texts:
             try:
-                ar_pipe = _get_ar_pipeline()
-                for start in range(0, len(ar_texts), batch_size):
-                    chunk = ar_texts[start:start + batch_size]
-                    chunk_indices = ar_indices[start:start + batch_size]
-                    self._apply_batch_chunk(
-                        ar_pipe,
-                        texts,
-                        languages,
-                        chunk_indices,
-                        chunk,
-                        results,
-                        auto_language,
-                    )
-            except BertNotAvailableError:
-                logger.warning("Arabic BERT unavailable for batch path.")
+                self._apply_arabic_ensemble_batch(
+                    texts,
+                    languages,
+                    ar_indices,
+                    ar_texts,
+                    results,
+                    auto_language,
+                    batch_size,
+                )
+            except BertNotAvailableError as exc:
+                logger.warning("Arabic local batch failed: %s", exc)
+
+        if en_texts:
+            try:
+                self._run_english_batch(
+                    texts,
+                    languages,
+                    en_indices,
+                    en_texts,
+                    results,
+                    auto_language=False,
+                    batch_size=batch_size,
+                )
+            except BertNotAvailableError as exc:
+                logger.warning("English local batch failed: %s", exc)
 
         return self._finalize_batch_results(results, texts, languages)
 

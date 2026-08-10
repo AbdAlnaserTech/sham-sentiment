@@ -128,6 +128,7 @@ def render_batch_analytics(
             file_name="تقرير_التعليقات.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             use_container_width=True,
+            key=f"excel_{save_button_key}",
         )
     with c2:
         try:
@@ -138,6 +139,7 @@ def render_batch_analytics(
                 file_name="تقرير_التعليقات.pdf",
                 mime="application/pdf",
                 use_container_width=True,
+                key=f"pdf_{save_button_key}",
             )
         except Exception as exc:
             st.caption(f"تعذّر إنشاء PDF: {exc}")

@@ -141,6 +141,7 @@ def render_live_import_panel(
             file_name="تعليقات_مجلوبة.csv",
             mime="text/csv",
             use_container_width=True,
+            key="live_fetched_comments_csv",
         )
 
 
