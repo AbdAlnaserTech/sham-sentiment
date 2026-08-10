@@ -12,6 +12,7 @@ import streamlit as st
 from wordcloud import WordCloud
 
 from language import is_arabic
+from cloud_setup import is_cloud_runtime
 
 # ── بلوك: حد أقصى للكلمات في السحابة ─────────────────────────────────────
 MAX_WORDCLOUD_WORDS = 80
@@ -47,6 +48,10 @@ def render_wordcloud(text: str) -> None:
 
     يتخطى النصوص القصيرة (< 3 كلمات) برسالة توضيحية.
     """
+    if is_cloud_runtime():
+        st.caption("💡 سحابة الكلمات متاحة عند التشغيل المحلي (run.bat).")
+        return
+
     if not (text or "").strip():
         st.caption("لا يوجد نص لعرض سحابة الكلمات.")
         return

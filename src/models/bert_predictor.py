@@ -12,7 +12,7 @@
 import os
 from typing import Any, Dict, List, Optional
 
-from language import detect_language, safe_percent
+from language import detect_language, is_arabic, safe_percent
 from logging_utils import logger
 
 # ── بلوك 1: حالة المكتبات والـ pipelines المخزّنة (singleton) ───────────────
@@ -38,13 +38,26 @@ _FINETUNED_PIPELINE = None  # نموذج fine-tune محلياً في models/bert
 
 
 def _cloud_light_mode() -> bool:
-    """وضع خفيف للسحابة — نموذج واحد صغير حسب اللغة (بدون XLM-RoBERTa)."""
+    """وضع خفيف للسحابة — نموذج واحد صغير (بدون XLM-RoBERTa)."""
+    if os.path.isdir("/mount/src"):
+        return True
     try:
         from cloud_setup import is_cloud_light_mode
 
         return is_cloud_light_mode()
     except ImportError:
         return os.environ.get("SENTIMENT_CLOUD_LIGHT", "").strip().lower() in {"1", "true", "yes"}
+
+
+def _prepare_inference_text(text: str) -> str:
+    """قص النص على السحابة — العربي الطويل يبطّئ أو يعلّق التحليل."""
+    raw = (text or "").strip()
+    if not raw or not _cloud_light_mode():
+        return raw
+    max_chars = 280 if is_arabic(raw) else 500
+    if len(raw) > max_chars:
+        return raw[:max_chars]
+    return raw
 
 
 def _release_pipelines() -> None:
@@ -104,6 +117,7 @@ def _pipeline_for_language(lang: str):
 
 def _run_inference(raw: str, lang: str, root_dir: str | None = None) -> List[Dict[str, Any]]:
     """تشغيل inference لنص واحد — يعيد scores."""
+    raw = _prepare_inference_text(raw)
     if finetuned_model_available(root_dir):
         return _get_finetuned_pipeline(root_dir)(raw)[0]
 
@@ -428,7 +442,7 @@ class BertSentimentPredictor:
 
         # ── fallback: تحليل كل نص على حدة ──
         for idx in chunk_indices:
-            raw = str(texts[idx] or "").strip()
+            raw = _prepare_inference_text(str(texts[idx] or "").strip())
             lang = self._resolve_batch_language(idx, texts, languages, auto_language)
             try:
                 out = pipe(raw)
@@ -540,7 +554,7 @@ class BertSentimentPredictor:
                     }
                 else:
                     valid_indices.append(index)
-                    valid_texts.append(raw)
+                    valid_texts.append(_prepare_inference_text(raw))
 
             for start in range(0, len(valid_texts), batch_size):
                 chunk = valid_texts[start:start + batch_size]
@@ -578,7 +592,7 @@ class BertSentimentPredictor:
                     }
                 else:
                     valid_indices.append(index)
-                    valid_texts.append(raw)
+                    valid_texts.append(_prepare_inference_text(raw))
 
             if valid_texts:
                 try:
@@ -623,7 +637,7 @@ class BertSentimentPredictor:
                     }
                 else:
                     valid_indices.append(index)
-                    valid_texts.append(raw)
+                    valid_texts.append(_prepare_inference_text(raw))
 
             for start in range(0, len(valid_texts), batch_size):
                 chunk = valid_texts[start:start + batch_size]

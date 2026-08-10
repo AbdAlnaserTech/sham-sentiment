@@ -24,30 +24,38 @@ def render_single_tab(*, auto_lang: bool, lang_choice: str) -> None:
     with col_input:
         st.markdown('<div class="section-card">', unsafe_allow_html=True)
         render_demo_picker(key_prefix="single", text_key="single_comment")
-        comment = st.text_area(
-            "اكتب التعليق",
-            height=160,
-            placeholder="مثال: الخدمة كتير منيح والتوصيل كان سريع",
-            key="single_comment",
-            label_visibility="collapsed",
-        )
-        analyze_one = st.button("تحليل التعليق", type="primary", use_container_width=True)
+
+        with st.form("single_analyze_form", clear_on_submit=False):
+            comment = st.text_area(
+                "اكتب التعليق",
+                height=160,
+                placeholder="مثال: الخدمة كتير منيح والتوصيل كان سريع",
+                key="single_comment",
+                label_visibility="collapsed",
+            )
+            analyze_one = st.form_submit_button("تحليل التعليق", type="primary", use_container_width=True)
+
         st.markdown("</div>", unsafe_allow_html=True)
 
         if analyze_one:
             if not comment.strip():
                 st.warning("الرجاء إدخال تعليق.")
+            elif not st.session_state.get("bert_ready") and is_cloud_runtime():
+                st.warning("انتظر حتى يظهر «✅ النموذج جاهز» أعلى الصفحة ثم حاول مجدداً.")
             else:
                 try:
-                    if not st.session_state.get("bert_ready") and is_cloud_runtime():
-                        st.warning("انتظر حتى يظهر «النموذج جاهز» أعلى الصفحة ثم حاول مجدداً.")
-                    else:
-                        with st.spinner("جاري التحليل..."):
-                            lang = resolve_language(comment, auto_lang, lang_choice)
-                            result = get_predictor().predict_with_confidence(comment, language=lang)
-                        st.session_state["last_result"] = result
-                        st.session_state["last_comment"] = comment
-                        append_history(result)
+                    lang = resolve_language(comment, auto_lang, lang_choice)
+                    spinner_msg = (
+                        "جاري تحليل التعليق العربي..."
+                        if lang in {"ar_fusha", "ar_shami"}
+                        else "جاري التحليل..."
+                    )
+                    with st.spinner(spinner_msg):
+                        result = get_predictor().predict_with_confidence(comment, language=lang)
+                    st.session_state["last_result"] = result
+                    st.session_state["last_comment"] = comment
+                    append_history(result)
+                    st.rerun()
                 except FileNotFoundError:
                     st.error("تعذّر تشغيل النظام. أعد تشغيل التطبيق أو تواصل مع المسؤول.")
                 except ValueError as exc:
