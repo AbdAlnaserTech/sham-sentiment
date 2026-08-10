@@ -43,9 +43,18 @@ def load_config(config_path: str | None = None) -> AppConfig:
     with open(path, "r", encoding="utf-8") as handle:
         raw = yaml.safe_load(handle) or {}
 
+    inference = dict(raw.get("inference", {}))
+    try:
+        from cloud_setup import is_cloud_runtime
+
+        if is_cloud_runtime():
+            inference["use_finetuned"] = False
+    except ImportError:
+        pass
+
     return AppConfig(
         data=raw.get("data", {}),
-        inference=raw.get("inference", {}),
+        inference=inference,
         ui=raw.get("ui", {}),
         logging=raw.get("logging", {}),
         platform=raw.get("platform", {}),
