@@ -37,6 +37,11 @@ def test_play_id_from_url():
     assert extract_google_play_id(url) == "com.whatsapp"
 
 
+def test_play_id_from_whatsapp_site():
+    """تحويل whatsapp.com إلى com.whatsapp."""
+    assert extract_google_play_id("https://www.whatsapp.com/") == "com.whatsapp"
+
+
 def test_invalid_youtube():
     """رفض نص غير صالح كمعرّف YouTube."""
     with pytest.raises(FetchError):

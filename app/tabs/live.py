@@ -23,12 +23,12 @@ SOURCE_LABELS = {
 
 SOURCE_PLACEHOLDERS = {
     "youtube": "https://www.youtube.com/watch?v=VIDEO_ID",
-    "google_play": "com.whatsapp أو رابط Google Play",
+    "google_play": "com.whatsapp أو play.google.com/... أو whatsapp.com",
 }
 
 SOURCE_HINTS = {
     "youtube": "الصق رابط فيديو YouTube عاماً (ليس Shorts محذوفاً).",
-    "google_play": "أدخل package id مثل com.whatsapp أو رابط التطبيق من Google Play.",
+    "google_play": "com.whatsapp · رابط Google Play · أو whatsapp.com (يُحوَّل تلقائياً).",
 }
 
 

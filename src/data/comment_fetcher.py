@@ -23,6 +23,19 @@ YOUTUBE_ID_RE = re.compile(
     r"(?:youtube\.com/(?:watch\?v=|shorts/|embed/)|youtu\.be/)([A-Za-z0-9_-]{11})"
 )
 PLAY_ID_RE = re.compile(r"[?&]id=([A-Za-z0-9._]+)")
+
+# مواقع شائعة → package id (لما المستخدم يلصق رابط الموقع بدل المتجر)
+KNOWN_WEB_TO_PACKAGE: dict[str, str] = {
+    "whatsapp.com": "com.whatsapp",
+    "web.whatsapp.com": "com.whatsapp",
+    "api.whatsapp.com": "com.whatsapp",
+    "telegram.org": "org.telegram.messenger",
+    "instagram.com": "com.instagram.android",
+    "facebook.com": "com.facebook.katana",
+    "twitter.com": "com.twitter.android",
+    "x.com": "com.twitter.android",
+    "tiktok.com": "com.zhiliaoapp.musically",
+}
 REDDIT_RE = re.compile(r"reddit\.com/r/([^/]+)/comments/([A-Za-z0-9]+)", re.I)
 
 # ── بلوك: روابط وهمية/أمثلة — نرفضها برسالة واضحة ─────────────────────────
@@ -90,16 +103,44 @@ def extract_youtube_video_id(url_or_id: str) -> str:
     raise FetchError("رابط YouTube غير صالح. مثال: https://www.youtube.com/watch?v=VIDEO_ID")
 
 
+def _normalize_web_host(raw: str) -> str:
+    """يستخرج اسم الن host من رابط أو نص."""
+    text = (raw or "").strip().lower()
+    if "://" in text:
+        from urllib.parse import urlparse
+
+        parsed = urlparse(text if "://" in text else f"https://{text}")
+        host = (parsed.netloc or parsed.path.split("/")[0]).strip()
+    else:
+        host = text.split("/")[0].split("?")[0].strip()
+    return host.removeprefix("www.")
+
+
 def extract_google_play_id(url_or_id: str) -> str:
-    """يستخرج package id من رابط Play أو من com.xxx مباشر."""
+    """يستخرج package id من رابط Play أو com.xxx أو مواقع معروفة (مثل whatsapp.com)."""
     raw = (url_or_id or "").strip()
     match = PLAY_ID_RE.search(raw)
     if match:
         return match.group(1)
-    if re.match(r"^[A-Za-z][A-Za-z0-9._]*$", raw):
+    if _looks_like_package_id(raw):
         return raw
+
+    host = _normalize_web_host(raw)
+    if host in KNOWN_WEB_TO_PACKAGE:
+        return KNOWN_WEB_TO_PACKAGE[host]
+
+    lower = raw.lower()
+    if "whatsapp" in lower:
+        return "com.whatsapp"
+    if "telegram" in lower:
+        return "org.telegram.messenger"
+    if "instagram" in lower:
+        return "com.instagram.android"
+
     raise FetchError(
-        "معرّف التطبيق غير صالح. مثال: com.whatsapp أو رابط Google Play كامل"
+        "معرّف التطبيق غير صالح. استخدم: com.whatsapp "
+        "أو https://play.google.com/store/apps/details?id=com.whatsapp "
+        "أو https://www.whatsapp.com/"
     )
 
 
