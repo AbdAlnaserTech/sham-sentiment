@@ -28,7 +28,7 @@ platform:
   negative_alert_threshold: 0.45
   api_key: ""
   github_url: "https://github.com/AbdAlnaserTech/sham-sentiment"
-  app_url: "https://sham-sentiment-ehgoenfwrgbz4hkfetqegj.streamlit.app"
+  app_url: "https://sham-sentiment-nas.streamlit.app"
 
 # ── واجهة المستخدم ───────────────────────────────────────────────────────────
 ui:
